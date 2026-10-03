@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+}
+
+enum AssignmentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  email       String       @unique
+  password    String       
+  fullName    String
+  role        Role         @default(TEACHER)
+  assignments Assignment[] 
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Course {
+  id          Int          @id @default(autoincrement())
+  courseCode  String       @unique 
+  name        String       
+  credits     Int          
+  classes     Class[]      
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Class {
+  id          Int          @id @default(autoincrement())
+  classCode   String       @unique 
+  courseId    Int          
+  room        String       
+  startTime   DateTime     
+  endTime     DateTime     
+  course      Course       @relation(fields: [courseId], references: [id])
+  assignment  Assignment?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Assignment {
+  id          Int              @id @default(autoincrement())
+  classId     Int              @unique 
+  teacherId   Int              
+  status      AssignmentStatus @default(PENDING)
+  class       Class            @relation(fields: [classId], references: [id])
+  teacher     User             @relation(fields: [teacherId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
