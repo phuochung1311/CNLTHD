@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const routes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');
+const requestLogger = require('./middlewares/requestLogger');
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
 
 // Tiêu chí Tuần 1: GET /health trả 200
 app.get('/health', (req, res) => {
