@@ -13,7 +13,7 @@ async function main() {
     { email: 'teacher2@uni.edu', fullName: 'Trần Thị B', role: 'TEACHER' },
   ];
   for (const u of users) {
-    await prisma.user.upsert({
+    await prisma.users.upsert({
       where: { email: u.email }, update: {}, create: { ...u, password },
     });
   }
@@ -24,7 +24,7 @@ async function main() {
   ];
   const courseIds = {};
   for (const c of courses) {
-    const row = await prisma.course.upsert({
+    const row = await prisma.courses.upsert({
       where: { courseCode: c.courseCode }, update: {}, create: c,
     });
     courseIds[c.courseCode] = row.id;
@@ -39,7 +39,7 @@ async function main() {
     { classCode: 'DB201A', course: 'DB201', room: 'B201', start: '2026-10-14T07:00:00+07:00', end: '2026-10-14T10:00:00+07:00' },
   ];
   for (const c of classes) {
-    await prisma.class.upsert({
+    await prisma.classes.upsert({
       where: { classCode: c.classCode },
       update: {},
       create: {
