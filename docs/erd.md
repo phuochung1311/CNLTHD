@@ -39,8 +39,8 @@ erDiagram
 
 ## Giải thích khóa
 
-- `Class.courseId` là khóa ngoại tới `Course.id`: một môn có nhiều lớp.
-- `Assignment.classId` vừa là khóa ngoại tới `Class.id` vừa `UNIQUE`: mỗi lớp chỉ có tối đa một giảng viên, và CSDL chặn sẵn việc phân công trùng lớp.
-- `Assignment.teacherId` là khóa ngoại tới `User.id` (người dùng có role `TEACHER`): một giảng viên có nhiều lớp.
-- Giảng viên được lưu trong bảng `User` với `role = TEACHER`, không có bảng riêng.
+- `Classes.courseId` là khóa ngoại tới `Courses.id`: một môn có nhiều lớp.
+- `Assignments.classId` vừa là khóa ngoại tới `Classes.id` vừa `UNIQUE`: mỗi lớp chỉ có tối đa một giảng viên, và CSDL chặn sẵn việc phân công trùng lớp.
+- `Assignments.teacherId` là khóa ngoại tới `Users.id` (người dùng có role `TEACHER`): một giảng viên có nhiều lớp.
+- Giảng viên được lưu trong bảng `Users` với `role = TEACHER`, không có bảng riêng.
 - Lịch của lớp là một khoảng thời gian cụ thể (`startTime`, `endTime`). Schema không mô hình hóa lịch lặp hằng tuần.
