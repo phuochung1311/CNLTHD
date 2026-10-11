@@ -4,24 +4,24 @@ Sơ đồ hiển thị trực tiếp trên GitHub (Mermaid). Khi viết báo cá
 
 ```mermaid
 erDiagram
-    USER ||--o{ ASSIGNMENT : "được phân công (teacherId)"
-    COURSE ||--o{ CLASS : "có nhiều lớp (courseId)"
-    CLASS ||--o| ASSIGNMENT : "có tối đa 1 phân công (classId unique)"
+    USERS ||--o{ ASSIGNMENTS : "được phân công (teacherId)"
+    COURSES ||--o{ CLASSES : "có nhiều lớp (courseId)"
+    CLASSES ||--o| ASSIGNMENTS : "có tối đa 1 phân công (classId unique)"
 
-    USER {
+    USERS {
         int id PK
         string email UK
         string password
         string fullName
         string role "ADMIN | TEACHER"
     }
-    COURSE {
+    COURSES {
         int id PK
         string courseCode UK
         string name
         int credits
     }
-    CLASS {
+    CLASSES {
         int id PK
         string classCode UK
         int courseId FK
@@ -29,7 +29,7 @@ erDiagram
         datetime startTime
         datetime endTime
     }
-    ASSIGNMENT {
+    ASSIGNMENTS {
         int id PK
         int classId FK, UK
         int teacherId FK
