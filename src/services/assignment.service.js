@@ -15,7 +15,7 @@ const include = {
  * Kiểm tra trùng lịch dạy của giảng viên trong khoảng thời gian [startTime, endTime)
  */
 async function findScheduleConflict(teacherId, startTime, endTime, excludeClassId = null) {
-  return prisma.assignment.findFirst({
+  return prisma.assignments.findFirst({
     where: {
       teacherId,
       ...(excludeClassId && { classId: { not: excludeClassId } }),
@@ -26,24 +26,24 @@ async function findScheduleConflict(teacherId, startTime, endTime, excludeClassI
 }
 
 async function list() {
-  return prisma.assignment.findMany({ include, orderBy: { id: 'asc' } });
+  return prisma.assignments.findMany({ include, orderBy: { id: 'asc' } });
 }
 
 async function getById(id) {
-  const assignment = await prisma.assignment.findUnique({ where: { id }, include });
+  const assignment = await prisma.assignments.findUnique({ where: { id }, include });
   if (!assignment) throw new AppError('Không tìm thấy phân công', 404);
   return assignment;
 }
 
 async function create({ classId, teacherId }) {
-  const cls = await prisma.class.findUnique({ where: { id: classId } });
+  const cls = await prisma.classes.findUnique({ where: { id: classId } });
   if (!cls) throw new AppError('Lớp học không tồn tại', 404);
 
-  const teacher = await prisma.user.findUnique({ where: { id: teacherId } });
+  const teacher = await prisma.users.findUnique({ where: { id: teacherId } });
   if (!teacher) throw new AppError('Giảng viên không tồn tại', 404);
   if (teacher.role !== 'TEACHER') throw new AppError('Người dùng này không phải giảng viên', 400);
 
-  const taken = await prisma.assignment.findUnique({ where: { classId } });
+  const taken = await prisma.assignments.findUnique({ where: { classId } });
   if (taken) throw new AppError('Lớp này đã có giảng viên phụ trách', 409);
 
   const conflict = await findScheduleConflict(teacherId, cls.startTime, cls.endTime);
@@ -54,12 +54,12 @@ async function create({ classId, teacherId }) {
   // Nếu hai request cùng phân công một lớp cùng lúc, unique classId của DB chặn lại
   // (Prisma ném P2002 -> error handler trả 409). Trùng lịch giảng viên khi chạy đồng
   // thời thì DB chưa chặn được: đây là hạn chế đã biết.
-  return prisma.assignment.create({ data: { classId, teacherId }, include });
+  return prisma.assignments.create({ data: { classId, teacherId }, include });
 }
 
 async function remove(id) {
   await getById(id);
-  await prisma.assignment.delete({ where: { id } });
+  await prisma.assignments.delete({ where: { id } });
 }
 
 module.exports = { list, getById, create, remove, findScheduleConflict };
