@@ -4,9 +4,11 @@ const helmet = require('helmet');
 const routes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');
 const requestLogger = require('./middlewares/requestLogger');
+const requestId = require('./middlewares/requestId.middleware');
 
 const app = express();
 
+app.use(requestId);
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
