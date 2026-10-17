@@ -1,10 +1,23 @@
-// Ghi log mỗi request đúng một dòng: method, url, status, thời gian xử lý.
-module.exports = (req, res, next) => {
-    const start = Date.now();
+const logger = require('../utils/logger');
 
-    // Chờ response gửi xong mới biết status code và tổng thời gian.
+module.exports = (req, res, next) => {
+    const start = process.hrtime.bigint();
+
     res.on('finish', () => {
-        console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+        const ms = Number(process.hrtime.bigint() - start) / 1e6;
+        const status = res.statusCode;
+        const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
+
+        logger[level](
+            {
+                requestId: req.id,
+                method: req.method,
+                url: req.originalUrl,
+                status,
+                responseTime: Math.round(ms * 100) / 100,
+            },
+            'request completed'
+        );
     });
 
     next();
