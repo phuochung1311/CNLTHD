@@ -13,13 +13,13 @@ const validate = (schemas) => {
     const schema = z.object(schemas);
     return (req, res, next) => {
         const result = schema.safeParse({
-        body: req.body,
-        params: req.params,
-        query: req.query,
+            body: req.body,
+            params: req.params,
+            query: req.query,
         });
         if (!result.success) return next(result.error); // ZodError -> error handler -> 400
         req.validated = result.data;
-        next();
+        return next();
     };
 };
 
