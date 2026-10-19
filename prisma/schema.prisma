@@ -18,47 +18,47 @@ enum AssignmentStatus {
   REJECTED
 }
 
-model Users {
+model User {
   id          Int          @id @default(autoincrement())
   email       String       @unique
   password    String       
   fullName    String
   role        Role         @default(TEACHER)
-  assignments Assignments[] 
+  assignments Assignment[] 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
 
-model Courses {
+model Course {
   id          Int          @id @default(autoincrement())
   courseCode  String       @unique 
   name        String       
   credits     Int          
-  classes     Classes[]      
+  classes     Class[]      
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
 
-model Classes {
+model Class {
   id          Int          @id @default(autoincrement())
   classCode   String       @unique 
   courseId    Int          
   room        String       
   startTime   DateTime     
   endTime     DateTime     
-  course      Courses       @relation(fields: [courseId], references: [id])
-  assignment  Assignments?
+  course      Course       @relation(fields: [courseId], references: [id])
+  assignment  Assignment?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
 
-model Assignments {
+model Assignment {
   id          Int              @id @default(autoincrement())
   classId     Int              @unique 
   teacherId   Int              
   status      AssignmentStatus @default(PENDING)
-  class       Classes            @relation(fields: [classId], references: [id])
-  teacher     Users             @relation(fields: [teacherId], references: [id])
+  class       Class            @relation(fields: [classId], references: [id])
+  teacher     User             @relation(fields: [teacherId], references: [id])
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 }
