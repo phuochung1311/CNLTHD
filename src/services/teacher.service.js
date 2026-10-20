@@ -1,5 +1,9 @@
 const prisma = require('../config/database');
 const AppError = require('../utils/AppError');
+const bcrypt = require('bcryptjs');
+
+// Định nghĩa số vòng lặp và băm mật khẩu 
+const saltRounds = 10;
 
 const teacherSelectFields = {
     id: true,
@@ -29,12 +33,14 @@ const getTeacherById = async (id) => {
     return teacher;
 };
 
-const createTeacher = async ({ email, password, fullName}) => {
+const createTeacher = async ({ data}) => {
+    const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+
     const newTeacher = await prisma.users.create({
         data: {
-            email,
-            password,
-            fullName,
+            email: data.email,
+            password: hashedPassword,
+            fullName: data.fullName,
             role: 'TEACHER',
         },
         select: teacherSelectFields,

@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const routes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');
 const AppError = require('./utils/AppError');
+const requestLogger = require('./middlewares/requestLogger');
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
 
 // Giới hạn request cho API để giảm spam và bảo vệ các endpoint dùng chung.
 const apiRateLimit = rateLimit({

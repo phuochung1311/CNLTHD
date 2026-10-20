@@ -10,6 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
 // Sau này TV1, TV2, TV3 sẽ gắn các route con vào đây. Ví dụ:
 // router.use('/classes', require('./class.routes'));
 router.use('/teachers', require('./teacher.routes'));
+router.use('/assignments', require('./assignment.routes'));
 router.use('/classes', require('./class.routes'));
 
 module.exports = router;

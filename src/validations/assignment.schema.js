@@ -36,3 +36,17 @@ const assignmentIdSchema = z.object({
 }).strict();
 
 module.exports = { assignmentSchema, classSchema, assignmentIdSchema };
+const createAssignment = {
+    body: z.object({
+        classId: z.number().int().positive(),
+        teacherId: z.number().int().positive(),
+    }),
+};
+
+const idParam = {
+    params: z.object({
+        id: z.coerce.number().int().positive(),
+    }),
+};
+
+module.exports = { createAssignment, idParam };
