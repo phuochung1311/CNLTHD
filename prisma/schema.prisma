@@ -24,7 +24,11 @@ model Users {
   password    String       
   fullName    String
   role        Role         @default(TEACHER)
+<<<<<<< HEAD
   assignments Assignments[]
+=======
+  assignments Assignments[] 
+>>>>>>> adaf75459cd85baaac2bcd6e2669af2bd4d68016
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -34,7 +38,11 @@ model Courses {
   courseCode  String       @unique 
   name        String       
   credits     Int          
+<<<<<<< HEAD
   classes     Classes[]
+=======
+  classes     Classes[]      
+>>>>>>> adaf75459cd85baaac2bcd6e2669af2bd4d68016
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -57,8 +65,13 @@ model Assignments {
   classId     Int              @unique 
   teacherId   Int              
   status      AssignmentStatus @default(PENDING)
+<<<<<<< HEAD
   class       Classes          @relation(fields: [classId], references: [id])
   teacher     Users            @relation(fields: [teacherId], references: [id])
+=======
+  class       Classes            @relation(fields: [classId], references: [id])
+  teacher     Users             @relation(fields: [teacherId], references: [id])
+>>>>>>> adaf75459cd85baaac2bcd6e2669af2bd4d68016
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 }
