@@ -6,6 +6,10 @@ const {
     updateTeacherSchema,
     teacherIdParamSchema,
 } = require('../validations/teacher.schema');
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
+
+router.use(verifyToken);
+router.use(checkRole('ADMIN'));
 
 router.get('/', teacherController.getTeachers);
 router.post('/', validate(createTeacherSchema), teacherController.createTeacher);
