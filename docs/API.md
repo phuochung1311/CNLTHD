@@ -28,6 +28,13 @@ Ví dụ lỗi kiểm tra dữ liệu (HTTP 400):
   ]
 }
 ```
+### Mã định danh request (`X-Request-Id`)
+
+Mọi response (kể cả lỗi 400, 404, 409, 500) đều có header `X-Request-Id`.
+
+- Client có thể gửi header `X-Request-Id` của riêng mình. Giá trị chỉ gồm chữ, số, `.`, `_`, `-` và dài tối đa 64 ký tự; server giữ nguyên và trả lại.
+- Nếu client không gửi hoặc gửi giá trị không hợp lệ (ví dụ chứa `/`), server tự tạo một UUID mới.
+- Mọi dòng log của request đều mang `requestId` này. Khi báo lỗi, gửi kèm id để truy lại log.
 
 ### Mã lỗi áp dụng cho mọi endpoint
 

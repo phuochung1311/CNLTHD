@@ -1,5 +1,18 @@
 const { z } = require('zod');
 
+const createAssignment = {
+    body: z.object({
+        classId: z.number().int().positive(),
+        teacherId: z.number().int().positive(),
+    }),
+};
+
+const idParam = {
+    params: z.object({
+        id: z.coerce.number().int().positive(),
+    }),
+};
+
 // ID trong request phải là số nguyên dương để tránh truy vấn bản ghi không hợp lệ.
 const positiveId = z.coerce.number().int().positive();
 
@@ -35,18 +48,10 @@ const assignmentIdSchema = z.object({
 	id: positiveId,
 }).strict();
 
-module.exports = { assignmentSchema, classSchema, assignmentIdSchema };
-const createAssignment = {
-    body: z.object({
-        classId: z.number().int().positive(),
-        teacherId: z.number().int().positive(),
-    }),
+module.exports = {
+    createAssignment,
+    idParam,
+    assignmentSchema,
+    classSchema,
+    assignmentIdSchema,
 };
-
-const idParam = {
-    params: z.object({
-        id: z.coerce.number().int().positive(),
-    }),
-};
-
-module.exports = { createAssignment, idParam };

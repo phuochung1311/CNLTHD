@@ -2,6 +2,7 @@
 // PHẢI đủ 4 tham số (err, req, res, next) thì Express mới coi đây là middleware
 // xử lý lỗi, và phải đặt cuối cùng trong app.js.
 const { ZodError } = require('zod');
+const logger = require('../utils/logger');
 
 const errorHandler = (err, req, res, next) => {
     let statusCode = 500;
@@ -42,8 +43,12 @@ const errorHandler = (err, req, res, next) => {
         errors = err.errors || null;
     }
 
-    // Chỉ log lỗi 5xx, và KHÔNG trả chi tiết lỗi hệ thống ra ngoài
-    if (statusCode >= 500) console.error('Lỗi hệ thống:', err);
+    // Log kèm requestId để truy vết. Lỗi 5xx ghi cả stack; chi tiết hệ thống KHÔNG trả ra ngoài.
+    if (statusCode >= 500) {
+        logger.error({ requestId: req.id, err }, 'Lỗi hệ thống');
+    } else {
+        logger.warn({ requestId: req.id, statusCode, message }, 'Lỗi nghiệp vụ');
+    }
 
     res.status(statusCode).json({ success: false, message, errors });
 };
