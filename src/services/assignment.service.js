@@ -1,21 +1,21 @@
 const prisma = require('../config/database');
 const AppError = require('../utils/AppError');
 
-/**
- * Service quản lý phân công giảng dạy
- */
+// Service quản lý phân công giảng dạy.
 
 const include = {
   class: { include: { course: true } },
   teacher: { select: { id: true, fullName: true, email: true } },
 };
-
-
-/**
- * Kiểm tra trùng lịch dạy của giảng viên trong khoảng thời gian [startTime, endTime)
- */
-async function findScheduleConflict(teacherId, startTime, endTime, excludeClassId = null) {
-  return prisma.assignments.findFirst({
+// Hai khoảng thời gian giao nhau khi startA < endB và endA > startB.
+async function findScheduleConflict(
+  teacherId,
+  startTime,
+  endTime,
+  excludeClassId = null,
+  db = prisma,
+) {
+  return db.assignments.findFirst({
     where: {
       teacherId,
       ...(excludeClassId && { classId: { not: excludeClassId } }),
@@ -36,21 +36,21 @@ async function getById(id) {
 }
 
 async function create({ classId, teacherId }) {
-  const cls = await prisma.classes.findUnique({ where: { id: classId } });
-  if (!cls) throw new AppError('Lớp học không tồn tại', 404);
+  return prisma.$transaction(async (tx) => {
+    // Khóa giảng viên để các phân công đồng thời phải xếp hàng.
+    await tx.$queryRaw`SELECT id FROM Users WHERE id = ${teacherId} FOR UPDATE`;
 
-  const teacher = await prisma.users.findUnique({ where: { id: teacherId } });
-  if (!teacher) throw new AppError('Giảng viên không tồn tại', 404);
-  if (teacher.role !== 'TEACHER') throw new AppError('Người dùng này không phải giảng viên', 400);
+    const cls = await tx.classes.findUnique({ where: { id: classId } });
+    if (!cls) throw new AppError('Lớp học không tồn tại', 404);
 
-  const taken = await prisma.assignments.findUnique({ where: { classId } });
-  if (taken) throw new AppError('Lớp này đã có giảng viên phụ trách', 409);
+    const teacher = await tx.users.findUnique({ where: { id: teacherId } });
+    if (!teacher) throw new AppError('Giảng viên không tồn tại', 404);
+    if (teacher.role !== 'TEACHER') throw new AppError('Người dùng này không phải giảng viên', 400);
 
-  const conflict = await findScheduleConflict(teacherId, cls.startTime, cls.endTime);
-  if (conflict) {
-    throw new AppError(`Giảng viên trùng lịch với lớp ${conflict.class.classCode}`, 409);
-  }
+    const taken = await tx.assignments.findUnique({ where: { classId } });
+    if (taken) throw new AppError('Lớp này đã có giảng viên phụ trách', 409);
 
+<<<<<<< HEAD
   // Giới hạn: mỗi giảng viên dạy tối đa 3 lớp (vượt thì 409)
   const total = await prisma.assignments.count({ where: { teacherId } });
     if (total >= 3) throw new AppError('Giảng viên đã được phân công tối đa 3 lớp', 409);
@@ -59,6 +59,23 @@ async function create({ classId, teacherId }) {
     // thời thì DB chưa chặn được: đây là hạn chế đã biết.
     return prisma.assignments.create({ data: { classId, teacherId }, include });
   }
+=======
+    const conflict = await findScheduleConflict(
+      teacherId,
+      cls.startTime,
+      cls.endTime,
+      null,
+      tx,
+    );
+    if (conflict) {
+      throw new AppError(`Giảng viên trùng lịch với lớp ${conflict.class.classCode}`, 409);
+    }
+
+    // Unique classId của DB chặn phân công trùng cùng một lớp.
+    return tx.assignments.create({ data: { classId, teacherId }, include });
+  });
+}
+>>>>>>> 5b07b1a52a44f37535c132cad304494eebea92ce
 
 async function remove(id) {
   await getById(id);
