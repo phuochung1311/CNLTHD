@@ -1,6 +1,5 @@
 const { z } = require('zod');
 
-
 const createAssignment = {
     body: z.object({
         classId: z.number().int().positive(),
