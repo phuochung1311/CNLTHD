@@ -176,6 +176,7 @@ describe('Tạo giảng viên', () => {
     });
 
     it('ADMIN gọi route thành công, lọt qua lớp Auth và đi tới lớp Zod Validate', async () => {
+        const adminToken = jwt.sign({ id: 1, role: 'ADMIN' }, process.env.JWT_SECRET);
         const res = await request(app)
             .post('/api/v1/teachers')
             .set('Authorization', `Bearer ${adminToken}`)
