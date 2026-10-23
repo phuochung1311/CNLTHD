@@ -241,8 +241,8 @@ Hai trường phải là số, không phải chuỗi: gửi `"classId": "1"` s�
 2. Lớp học tồn tại (404).
 3. Giảng viên tồn tại (404) và có vai trò giảng viên (400).
 4. Lớp chưa có giảng viên phụ trách (409).
-5. Giảng viên chưa được phân công đủ 3 lớp (409).
-6. Giảng viên không trùng lịch với lớp đã nhận (409).
+5. Giảng viên không trùng lịch với lớp đã nhận (409).
+6. Giảng viên chưa được phân công đủ 3 lớp (409).
 
 **Mã lỗi:**
 
@@ -253,8 +253,8 @@ Hai trường phải là số, không phải chuỗi: gửi `"classId": "1"` s�
 | 404 | `Lớp học không tồn tại` |
 | 404 | `Giảng viên không tồn tại` |
 | 409 | `Lớp này đã có giảng viên phụ trách` |
-| 409 | `Giảng viên đã được phân công tối đa 3 lớp` |
 | 409 | `Giảng viên trùng lịch với lớp {classCode}` — hai lớp có khoảng thời gian giao nhau |
+| 409 | `Giảng viên đã được phân công tối đa 3 lớp` |
 | 409 | `Dữ liệu bị trùng (vi phạm unique)` — hai request cùng phân công một lớp tại cùng thời điểm |
 
 **Hạn chế đã biết:** khi hai request cùng phân công cho một giảng viên vào hai lớp trùng lịch tại cùng một thời điểm, cơ sở dữ liệu chưa chặn được trường hợp này.
