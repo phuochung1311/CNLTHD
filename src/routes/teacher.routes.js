@@ -5,6 +5,7 @@ const {
     createTeacherSchema,
     updateTeacherSchema,
     teacherIdParamSchema,
+    updateTeacherPasswordSchema,
 } = require('../validations/teacher.schema');
 const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
@@ -16,5 +17,6 @@ router.post('/', validate(createTeacherSchema), teacherController.createTeacher)
 router.get('/:id', validate(teacherIdParamSchema), teacherController.getTeacher);
 router.patch('/:id', validate(updateTeacherSchema), teacherController.updateTeacher);
 router.delete('/:id', validate(teacherIdParamSchema), teacherController.deleteTeacher);
+router.patch('/:id/password', validate(updateTeacherPasswordSchema), teacherController.updateTeacherPassword);
 
 module.exports = router;

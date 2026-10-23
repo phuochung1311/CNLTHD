@@ -29,7 +29,7 @@ const getTeacherById = async (id) => {
 
     if (!teacher) {
         throw new AppError('Không tìm thấy giảng viên', 404);
-    }
+    };
     return teacher;
 };
 
@@ -58,6 +58,19 @@ const updateTeacher = async (id, data) => {
     });
 };
 
+const updateTeacherPassword = async (id, password) => {
+    await getTeacherById(id);
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    return await prisma.users.update({
+        where: { id },
+        data: {
+            password: hashedPassword,
+        },
+        select: teacherSelectFields,
+    });
+};
+
 const deleteTeacher = async (id) => {
     await getTeacherById(id);
     await prisma.users.delete({
@@ -71,6 +84,6 @@ module.exports = {
     getTeacherById,
     createTeacher,
     updateTeacher,
+    updateTeacherPassword,
     deleteTeacher,
 }
-
