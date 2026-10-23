@@ -12,6 +12,7 @@ if (process.env.NODE_ENV !== 'production') {
 router.use('/assignments', require('./assignment.routes'));
 router.use('/classes', require('./class.routes'));
 router.use('/teachers', require('./teacher.routes'));
+router.use('/courses', require('./course.routes'));
 router.use('/auth', require('./auth.routes'));
 
 module.exports = router;

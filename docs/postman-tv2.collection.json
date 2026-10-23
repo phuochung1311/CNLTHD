@@ -4,9 +4,81 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" }
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" },
+    { "key": "courseId", "value": "1" }
   ],
   "item": [
+    {
+      "name": "Auth - login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"admin@uni.edu\",\"password\":\"123456\"}" },
+        "url": "{{baseUrl}}/api/v1/auth/login"
+      }
+    },
+    {
+      "name": "Auth - login sai 6 lần (lần 6 trả 429)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"admin@uni.edu\",\"password\":\"sai\"}" },
+        "url": "{{baseUrl}}/api/v1/auth/login"
+      }
+    },
+    {
+      "name": "Courses - list",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/courses" }
+    },
+    {
+      "name": "Courses - detail",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/courses/{{courseId}}" }
+    },
+    {
+      "name": "Courses - create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"courseCode\":\"SE999\",\"name\":\"Kiem thu phan mem\",\"credits\":3}" },
+        "url": "{{baseUrl}}/api/v1/courses"
+      }
+    },
+    {
+      "name": "Courses - duplicate code (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"courseCode\":\"SE999\",\"name\":\"Mon bi trung\",\"credits\":3}" },
+        "url": "{{baseUrl}}/api/v1/courses"
+      }
+    },
+    {
+      "name": "Courses - update",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"credits\":4}" },
+        "url": "{{baseUrl}}/api/v1/courses/{{courseId}}"
+      }
+    },
+    {
+      "name": "Courses - delete",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/courses/{{courseId}}"
+      }
+    },
     {
       "name": "Validation - invalid body",
       "request": {
@@ -17,34 +89,16 @@
       }
     },
     {
-      "name": "Validation - valid body",
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\"name\":\"An\"}" },
-        "url": "{{baseUrl}}/api/v1/debug/validate"
-      }
+      "name": "Error - 500 without internal details",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/debug/crash" }
     },
     {
-      "name": "Async error",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/v1/debug/async-error"
-      }
+      "name": "Not found - 404",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/route-khong-ton-tai" }
     },
     {
-      "name": "Not found",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/v1/route-khong-ton-tai"
-      }
-    },
-    {
-      "name": "Rate limit",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/v1/ping"
-      }
+      "name": "Rate limit - API chung",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/ping" }
     }
   ]
 }

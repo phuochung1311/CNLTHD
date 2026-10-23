@@ -6,6 +6,7 @@ const routes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');
 const requestLogger = require('./middlewares/requestLogger');
 const requestId = require('./middlewares/requestId.middleware');
+const { loginRateLimit } = require('./middlewares/rateLimit.middleware');
 const AppError = require('./utils/AppError');
 
 const app = express();
@@ -36,6 +37,7 @@ app.get('/health', (req, res) => {
 });
 
 // Gắn router chính
+app.use('/api/v1/auth/login', loginRateLimit);
 app.use('/api/v1', apiRateLimit, routes);
 
 // Tiêu chí Tuần 1: Đường dẫn không tồn tại trả 404 dạng JSON
