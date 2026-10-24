@@ -76,6 +76,14 @@ test('error handler trả 400 cho JSON sai cú pháp', async () => {
     expect(response.body.message).toBe('JSON không hợp lệ');
 });
 
+test('error handler trả 500 nhưng không lộ chi tiết lỗi hệ thống', async () => {
+    const response = await request(app).get('/api/v1/debug/crash');
+
+    expect(response.status).toBe(500);
+    expect(response.body.message).toBe('Lỗi máy chủ nội bộ');
+    expect(JSON.stringify(response.body)).not.toContain('Lỗi không lường trước');
+});
+
 test('error handler ánh xạ P2003 thành 409 Conflict', () => {
     const response = handleError({ code: 'P2003' });
 
