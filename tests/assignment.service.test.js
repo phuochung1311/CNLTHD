@@ -6,7 +6,7 @@ jest.mock('../src/config/database', () => {
     users: { findUnique: jest.fn() },
     assignments: {
       findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(),
-      create: jest.fn(), delete: jest.fn(),
+      create: jest.fn(), delete: jest.fn(), count: jest.fn(),
     },
     $queryRaw: jest.fn(),
   };
@@ -32,6 +32,7 @@ beforeEach(() => {
   prisma.users.findUnique.mockResolvedValue(TEACHER);
   prisma.assignments.findUnique.mockResolvedValue(null);
   prisma.assignments.findFirst.mockResolvedValue(null);
+  prisma.assignments.count.mockResolvedValue(0);
   prisma.assignments.create.mockResolvedValue(CREATED);
 });
 
@@ -88,7 +89,28 @@ describe('assignmentService.create', () => {
       })
     );
   });
+    test('409 khi giảng viên đã được phân công đủ 3 lớp', async () => {
+    prisma.assignments.count.mockResolvedValue(3);
+    await expect(service.create({ classId: 1, teacherId: 2 })).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining('tối đa 3 lớp'),
+    });
+    expect(prisma.assignments.create).not.toHaveBeenCalled();
+  });
 
+  test('tạo thành công khi giảng viên mới có 2 lớp (dưới giới hạn)', async () => {
+    prisma.assignments.count.mockResolvedValue(2);
+    await expect(service.create({ classId: 1, teacherId: 2 })).resolves.toEqual(CREATED);
+  });
+
+  test('kiểm tra trùng lịch chạy trước giới hạn 3 lớp', async () => {
+    prisma.assignments.count.mockResolvedValue(3);
+    prisma.assignments.findFirst.mockResolvedValue({ class: { classCode: 'WEB101B' } });
+    await expect(service.create({ classId: 1, teacherId: 2 })).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining('trùng lịch'),
+    });
+  });
   test('chạy trong một transaction và khóa dòng giảng viên trước mọi bước đọc', async () => {
     await service.create({ classId: 1, teacherId: 2 });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);

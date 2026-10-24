@@ -60,7 +60,10 @@ async function create({ classId, teacherId }) {
     if (conflict) {
       throw new AppError(`Giảng viên trùng lịch với lớp ${conflict.class.classCode}`, 409);
     }
-
+    // Giới hạn: mỗi giảng viên dạy tối đa 3 lớp (vượt thì 409)
+    const total = await tx.assignments.count({ where: { teacherId } });
+    if (total >= 3) throw new AppError('Giảng viên đã được phân công tối đa 3 lớp', 409);
+    
     // Unique classId của DB chặn phân công trùng cùng một lớp.
     return tx.assignments.create({ data: { classId, teacherId }, include });
   });
