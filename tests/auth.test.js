@@ -188,3 +188,78 @@ describe('Tạo giảng viên', () => {
         expect(res.status).toBe(400); // Lỗi do Zod Validate chặn
     });
 });
+
+describe('Đổi mật khẩu', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('không token tự đổi mật khẩu -> 401', async () => {
+        const response = await request(app)
+            .post('/api/v1/auth/change-password')
+            .send({ oldPassword: 'OldPass1', newPassword: 'NewPass1' });
+
+        expect(response.status).toBe(401);
+        expect(prisma.users.findUnique).not.toHaveBeenCalled();
+    });
+
+    test('giáo viên tự đổi mật khẩu với mật khẩu cũ đúng', async () => {
+        const oldPassword = 'OldPass1';
+        const newPassword = 'NewPass1';
+        const user = {
+            id: 2,
+            email: 'teacher@test.edu',
+            fullName: 'Teacher Test',
+            role: 'TEACHER',
+            password: bcrypt.hashSync(oldPassword, 4),
+        };
+        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET);
+
+        prisma.users.findUnique.mockResolvedValue(user);
+        prisma.users.update.mockResolvedValue({
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            role: user.role,
+        });
+
+        const response = await request(app)
+            .post('/api/v1/auth/change-password')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ oldPassword, newPassword });
+
+        expect(response.status).toBe(200);
+        expect(prisma.users.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: user.id },
+            data: { password: expect.stringMatching(/^\$2[aby]\$/) },
+        }));
+        expect(JSON.stringify(response.body)).not.toContain(newPassword);
+    });
+
+    test('ADMIN đổi mật khẩu giảng viên', async () => {
+        const adminToken = jwt.sign({ id: 1, role: 'ADMIN' }, process.env.JWT_SECRET);
+        const teacher = {
+            id: 2,
+            email: 'teacher@test.edu',
+            fullName: 'Teacher Test',
+            role: 'TEACHER',
+        };
+
+        prisma.users.findFirst.mockResolvedValue(teacher);
+        prisma.users.update.mockResolvedValue(teacher);
+
+        const response = await request(app)
+            .patch('/api/v1/teachers/2/password')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({ password: 'ResetPass1' });
+
+        expect(response.status).toBe(200);
+        expect(prisma.users.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 2, role: 'TEACHER' },
+        }));
+        expect(prisma.users.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 2 },
+            data: { password: expect.stringMatching(/^\$2[aby]\$/) },
+        }));
+    });
+});

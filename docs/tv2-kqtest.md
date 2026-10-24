@@ -20,5 +20,4 @@ Chạy bằng lệnh `npm test` tại thư mục gốc của project.
 Bộ test tự động của TV2 nằm trong `tests/valdiations-error.test.js`,
 `tests/course.service.test.js` và `tests/login-rate-limit.test.js`, dùng Jest và mock Prisma nên không cần database.
 
-Lần chạy gần nhất: 6 test suites, 41 tests; 40 tests đạt. Một test còn lỗi nằm trong
-`tests/auth.test.js` do biến `adminToken` chưa được khai báo, thuộc suite Authentication của thành viên khác.
+Lần chạy gần nhất: **6 test suites, 41/41 tests đạt**.
