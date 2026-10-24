@@ -2,6 +2,8 @@ const prisma = require('../config/database');
 const AppError = require('../utils/AppError');
 
 // Service quản lý phân công giảng dạy.
+const ACTIVE_STATUSES = ['PENDING', 'CONFIRMED'];
+const MAX_ASSIGNMENTS_PER_TEACHER = 3;
 
 const include = {
   class: { include: { course: true } },
@@ -18,6 +20,7 @@ async function findScheduleConflict(
   return db.assignments.findFirst({
     where: {
       teacherId,
+      status: { in: ACTIVE_STATUSES },
       ...(excludeClassId && { classId: { not: excludeClassId } }),
       class: { startTime: { lt: endTime }, endTime: { gt: startTime } },
     },
@@ -50,6 +53,13 @@ async function create({ classId, teacherId }) {
     const taken = await tx.assignments.findUnique({ where: { classId } });
     if (taken) throw new AppError('Lớp này đã có giảng viên phụ trách', 409);
 
+    const assignmentCount = await tx.assignments.count({
+      where: { teacherId, status: { in: ACTIVE_STATUSES } },
+    });
+    if (assignmentCount >= MAX_ASSIGNMENTS_PER_TEACHER) {
+      throw new AppError('Giảng viên đã được phân công tối đa 3 lớp', 409);
+    }
+
     const conflict = await findScheduleConflict(
       teacherId,
       cls.startTime,
@@ -63,7 +73,7 @@ async function create({ classId, teacherId }) {
 
     // Unique classId của DB chặn phân công trùng cùng một lớp.
     return tx.assignments.create({ data: { classId, teacherId }, include });
-  });
+  }, { isolationLevel: 'Serializable' });
 }
 
 async function remove(id) {

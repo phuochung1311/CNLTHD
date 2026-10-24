@@ -55,7 +55,7 @@ Quy tắc: `classCode` chỉ gồm chữ HOA và số; `endTime` phải sau `sta
 
 | Request | Kết quả mong đợi |
 |---|---|
-| `GET /health` | 200, `{ "status": "ok", ... }` |
+| `GET /health` | 200 khi DB hoạt động; 503 khi DB không khả dụng |
 | `GET /api/v1/ping` | 200, `pong` |
 | `GET /api/v1/khong-ton-tai` | 404, JSON `{ success: false, ... }` |
 | `GET /api/v1/debug/async-error` | 409, lỗi ném từ hàm async đi qua error handler |

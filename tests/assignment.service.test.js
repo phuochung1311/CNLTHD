@@ -6,7 +6,7 @@ jest.mock('../src/config/database', () => {
     users: { findUnique: jest.fn() },
     assignments: {
       findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(),
-      create: jest.fn(), delete: jest.fn(),
+      count: jest.fn(), create: jest.fn(), delete: jest.fn(),
     },
     $queryRaw: jest.fn(),
   };
@@ -32,6 +32,7 @@ beforeEach(() => {
   prisma.users.findUnique.mockResolvedValue(TEACHER);
   prisma.assignments.findUnique.mockResolvedValue(null);
   prisma.assignments.findFirst.mockResolvedValue(null);
+  prisma.assignments.count.mockResolvedValue(0);
   prisma.assignments.create.mockResolvedValue(CREATED);
 });
 
@@ -83,6 +84,7 @@ describe('assignmentService.create', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           teacherId: 2,
+          status: { in: ['PENDING', 'CONFIRMED'] },
           class: { startTime: { lt: CLASS.endTime }, endTime: { gt: CLASS.startTime } },
         }),
       })
@@ -95,6 +97,28 @@ describe('assignmentService.create', () => {
     const lockOrder = prisma.$queryRaw.mock.invocationCallOrder[0];
     const firstRead = prisma.classes.findUnique.mock.invocationCallOrder[0];
     expect(lockOrder).toBeLessThan(firstRead);
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'Serializable',
+    });
+  });
+
+  test('409 khi giảng viên đã đủ 3 lớp đang hoạt động', async () => {
+    prisma.assignments.count.mockResolvedValue(3);
+    await expect(service.create({ classId: 1, teacherId: 2 })).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'Giảng viên đã được phân công tối đa 3 lớp',
+    });
+    expect(prisma.assignments.findFirst).not.toHaveBeenCalled();
+    expect(prisma.assignments.create).not.toHaveBeenCalled();
+  });
+
+  test('bỏ qua assignment REJECTED khi kiểm tra trùng lịch', async () => {
+    await service.create({ classId: 1, teacherId: 2 });
+    expect(prisma.assignments.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: { in: ['PENDING', 'CONFIRMED'] } }),
+      }),
+    );
   });
 });
 

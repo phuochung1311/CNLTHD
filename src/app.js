@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const routes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');
+const prisma = require('./config/database');
 
 const app = express();
 
@@ -11,9 +12,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Tiêu chí Tuần 1: GET /health trả 200
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', message: 'Hệ thống Phân công Giảng dạy API đang chạy' });
+app.get('/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.status(200).json({ status: 'ok', message: 'Hệ thống Phân công Giảng dạy API đang chạy' });
+    } catch (error) {
+        res.status(503).json({ status: 'error', message: 'Database không khả dụng' });
+    }
 });
 
 // Gắn router chính
