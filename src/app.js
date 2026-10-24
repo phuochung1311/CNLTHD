@@ -7,6 +7,7 @@ const errorHandler = require('./middlewares/error.middleware');
 const requestLogger = require('./middlewares/requestLogger');
 const requestId = require('./middlewares/requestId.middleware');
 const AppError = require('./utils/AppError');
+const prisma = require('./config/database');
 
 const app = express();
 
@@ -31,8 +32,13 @@ const apiRateLimit = rateLimit({
 });
 
 // Tiêu chí Tuần 1: GET /health trả 200
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', message: 'Hệ thống Phân công Giảng dạy API đang chạy' });
+app.get('/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.status(200).json({ status: 'ok', message: 'Hệ thống Phân công Giảng dạy API đang chạy' });
+    } catch (error) {
+        res.status(503).json({ status: 'error', message: 'Database không khả dụng' });
+    }
 });
 
 // Gắn router chính
