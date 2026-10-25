@@ -6,11 +6,7 @@ jest.mock('../src/config/database', () => {
     users: { findUnique: jest.fn() },
     assignments: {
       findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(),
-<<<<<<< HEAD
-      count: jest.fn(), create: jest.fn(), delete: jest.fn(),
-=======
       create: jest.fn(), delete: jest.fn(), count: jest.fn(),
->>>>>>> c6d2a6f714a91037dddca8499d98af9e25e096f8
     },
     $queryRaw: jest.fn(),
   };
@@ -108,8 +104,8 @@ describe('assignmentService.create', () => {
     await expect(service.create({ classId: 1, teacherId: 2 })).resolves.toEqual(CREATED);
   });
 
-  test('kiểm tra trùng lịch chạy trước giới hạn 3 lớp', async () => {
-    prisma.assignments.count.mockResolvedValue(3);
+  test('kiểm tra trùng lịch khi giảng viên chưa đạt giới hạn 3 lớp', async () => {
+    prisma.assignments.count.mockResolvedValue(2);
     prisma.assignments.findFirst.mockResolvedValue({ class: { classCode: 'WEB101B' } });
     await expect(service.create({ classId: 1, teacherId: 2 })).rejects.toMatchObject({
       statusCode: 409,

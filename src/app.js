@@ -4,14 +4,11 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const routes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');
-<<<<<<< HEAD
+const prisma = require('./config/database');
 const requestLogger = require('./middlewares/requestLogger');
 const requestId = require('./middlewares/requestId.middleware');
 const { loginRateLimit } = require('./middlewares/rateLimit.middleware');
 const AppError = require('./utils/AppError');
-=======
-const prisma = require('./config/database');
->>>>>>> fe1b332bada2dbc926e4a9371c0b4ce76e1d4610
 
 const app = express();
 
@@ -22,8 +19,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-<<<<<<< HEAD
-// Giới hạn request cho API để giảm spam và bảo vệ các endpoint dùng chung.
+// Giới hạn request chung cho API để giảm spam mà không thay thế limiter riêng của login.
 const apiRateLimit = rateLimit({
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
     limit: Number(process.env.RATE_LIMIT_MAX) || 100,
@@ -36,10 +32,6 @@ const apiRateLimit = rateLimit({
     },
 });
 
-// Tiêu chí Tuần 1: GET /health trả 200
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', message: 'Hệ thống Phân công Giảng dạy API đang chạy' });
-=======
 app.get('/health', async (req, res) => {
     try {
         await prisma.$queryRaw`SELECT 1`;
@@ -47,7 +39,6 @@ app.get('/health', async (req, res) => {
     } catch (error) {
         res.status(503).json({ status: 'error', message: 'Database không khả dụng' });
     }
->>>>>>> fe1b332bada2dbc926e4a9371c0b4ce76e1d4610
 });
 
 // Gắn router chính
