@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/assignments"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP status 200', function () {
+          pm.response.to.have.status(200);
+      });
+      pm.test('Latency dưới 1 giây', function () {
+          pm.expect(pm.response.responseTime).to.be.below(1000);
+      });
+      console.log({ endpoint: pm.request.url.toString(), iteration: pm.info.iteration + 1, status: pm.response.code, latencyMs: pm.response.responseTime });
+    language: text/javascript
+order: 5000
