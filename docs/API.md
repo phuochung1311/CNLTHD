@@ -27,6 +27,16 @@ Ví dụ lỗi kiểm tra dữ liệu (HTTP 400):
     }
   ]
 }
+
+### Mã lỗi chung
+
+| HTTP | Thông báo |
+|---|---|
+| 400 | `JSON không hợp lệ` — cú pháp JSON trong request body sai |
+| 404 | `Đường dẫn không tồn tại` — endpoint không được khai báo |
+| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
+| 500 | `Lỗi máy chủ nội bộ` — lỗi hệ thống không được trả chi tiết cho client |
+
 ```
 ### Mã định danh request (`X-Request-Id`)
 
@@ -45,6 +55,8 @@ Các endpoint của `assignments` yêu cầu header `Authorization: Bearer <acce
 | `GET /assignments`, `GET /assignments/:id` | Đã đăng nhập (ADMIN hoặc TEACHER) |
 | `POST /assignments`, `DELETE /assignments/:id` | Vai trò ADMIN |
 
+Client gửi JWT trong header `Authorization` với scheme `Bearer`. Thời hạn token mặc định là 1 giờ và có thể cấu hình bằng `JWT_EXPIRES_IN`.
+
 Lưu ý: người dùng TEACHER gọi `GET /assignments` nhận toàn bộ danh sách phân công, chưa lọc theo giảng viên đang đăng nhập.
 ### Giới hạn tốc độ
 
@@ -60,7 +72,7 @@ Mã lỗi xác thực áp dụng cho các endpoint trên:
 | 403 | `Không đủ quyền thực hiện thao tác này` | Đã đăng nhập nhưng vai trò không được phép (ví dụ TEACHER gọi `POST`) |
 | 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` | Vượt giới hạn số request trong một khoảng thời gian |
 
-Xác thực và phân quyền được kiểm tra trước khi kiểm tra dữ liệu đầu vào: request không có token luôn nhận 401, kể cả khi dữ liệu gửi lên sai.
+Với các endpoint yêu cầu đăng nhập, xác thực và phân quyền được kiểm tra trước dữ liệu đầu vào: request không có token nhận 401, kể cả khi dữ liệu gửi lên sai. Riêng `POST /auth/login` không yêu cầu token và kiểm tra dữ liệu trước thông tin đăng nhập.
 
 ### Định dạng thời gian
 
@@ -71,6 +83,7 @@ Mọi trường thời gian (`startTime`, `endTime`, `createdAt`, `updatedAt`) t
 ### `POST /auth/login`
 
 Đăng nhập bằng email và mật khẩu, nhận token truy cập (JWT).
+Thời hạn JWT mặc định là 1 giờ, có thể cấu hình bằng `JWT_EXPIRES_IN`.
 
 **Body (JSON):**
 
@@ -185,7 +198,9 @@ Khi chưa có phân công nào, `data` là mảng rỗng `[]`.
 
 | HTTP | Thông báo |
 |---|---|
-| 400 | `Dữ liệu đầu vào không hợp lệ` — không gửi body hoặc body sai dạng (`field: body`) |
+| 401 | `Thiếu token xác thực` |
+| 401 | `Token không hợp lệ` |
+| 401 | `Token hết hạn` |
 | 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 
 ### `GET /assignments/:id`
@@ -243,8 +258,12 @@ Lấy thông tin chi tiết của một phân công theo ID.Yêu cầu đăng nh
 
 | HTTP | Thông báo |
 |---|---|
+| 401 | `Thiếu token xác thực` |
+| 401 | `Token không hợp lệ` |
+| 401 | `Token hết hạn` |
 | 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id`) — ID không phải số nguyên dương |
 | 404 | `Không tìm thấy phân công` |
+| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 
 ### `POST /assignments`
 
@@ -334,6 +353,7 @@ Hai trường phải là số, không phải chuỗi: gửi `"classId": "1"` s�
 | 409 | `Giảng viên trùng lịch với lớp {classCode}` — hai lớp có khoảng thời gian giao nhau |
 | 409 | `Giảng viên đã được phân công tối đa 3 lớp` |
 | 409 | `Dữ liệu bị trùng (vi phạm unique)` — hai request cùng phân công một lớp tại cùng thời điểm |
+| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 
 **Xử lý đồng thời:** việc tạo phân công chạy trong một transaction và khóa dòng giảng viên (`SELECT ... FOR UPDATE`), nên các request phân công cho cùng một giảng viên được xử lý lần lượt; kiểm tra trùng lịch và giới hạn 3 lớp luôn đọc dữ liệu mới nhất. Hai request cùng gán một lớp cho hai giảng viên khác nhau không bị khóa chung; khi đó ràng buộc duy nhất của `classId` chặn request đến sau và trả 409 `Dữ liệu bị trùng (vi phạm unique)`.
 
@@ -361,5 +381,10 @@ Xóa một phân công theo ID.
 
 | HTTP | Thông báo |
 |---|---|
+| 401 | `Thiếu token xác thực` |
+| 401 | `Token không hợp lệ` |
+| 401 | `Token hết hạn` |
+| 403 | `Không đủ quyền thực hiện thao tác này` |
 | 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id`) — ID không phải số nguyên dương |
 | 404 | `Không tìm thấy phân công` |
+| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
