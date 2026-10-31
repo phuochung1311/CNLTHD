@@ -66,6 +66,23 @@ Quy tắc: `classCode` chỉ gồm chữ HOA và số; `endTime` phải sau `sta
 
 Các route `/debug` chỉ bật khi `NODE_ENV` khác `production`.
 
+## Quan sát hệ thống
+
+- `LOG_LEVEL` cấu hình mức log của Pino; mặc định là `info`. Đặt `LOG_LEVEL=silent` để tắt log (trong môi trường test, mức log tự chuyển thành `silent`).
+- Log được ghi theo từng dòng JSON, thuận tiện để tìm kiếm và xử lý bằng công cụ log.
+- Mỗi response có header `X-Request-Id`. Lấy giá trị header này từ response khi cần tra cứu request tương ứng trong file log:
+
+```powershell
+Select-String -Path <file log> -Pattern "<id>" -Encoding utf8
+```
+
+```bash
+grep "<id>" <file log>
+```
+
+- Chạy toàn bộ test: `npx jest`.
+- Tạo báo cáo độ trễ từ file log: `node scripts/latency-report.js <đường dẫn file log> [--skip-first=1]`.
+
 ## Định dạng response
 - Thành công: `{ "success": true, "message": "...", "data": ... }`
 - Thất bại: `{ "success": false, "message": "...", "errors": ... }`
