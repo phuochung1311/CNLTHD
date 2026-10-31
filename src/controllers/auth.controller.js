@@ -7,6 +7,16 @@ const login = async (req, res) => {
     return success(res, data, 'Đăng nhập thành công', 200);
 };
 
+const changePassword = async (req, res) => {
+    const data = await authService.changePassword(
+        req.user.id,
+        req.validated.body
+    );
+
+    return success(res, data, 'Đổi mật khẩu thành công');
+};
+
 module.exports = {
     login,
+    changePassword,
 };

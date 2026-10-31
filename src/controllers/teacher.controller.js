@@ -24,6 +24,14 @@ const updateTeacher = async (req, res) => {
     return success(res, data, 'Cập nhật giảng viên thành công');
 };
 
+const updateTeacherPassword = async (req, res) => {
+    const data = await teacherService.updateTeacherPassword(
+        req.validated.params.id,
+        req.validated.body.password,
+    );
+    return success(res, data, 'Cập nhật mật khẩu giảng viên thành công');
+};
+
 const deleteTeacher = async (req, res) => {
     await teacherService.deleteTeacher(req.validated.params.id);
     return success(res, null, 'Xóa giảng viên thành công');
@@ -34,5 +42,6 @@ module.exports = {
     getTeacher,
     createTeacher,
     updateTeacher,
+    updateTeacherPassword,
     deleteTeacher,
 };
