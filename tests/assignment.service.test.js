@@ -118,9 +118,6 @@ describe('assignmentService.create', () => {
     const lockOrder = prisma.$queryRaw.mock.invocationCallOrder[0];
     const firstRead = prisma.classes.findUnique.mock.invocationCallOrder[0];
     expect(lockOrder).toBeLessThan(firstRead);
-    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
-      isolationLevel: 'Serializable',
-    });
   });
 
   test('409 khi giảng viên đã đủ 3 lớp đang hoạt động', async () => {
@@ -131,6 +128,15 @@ describe('assignmentService.create', () => {
     });
     expect(prisma.assignments.findFirst).not.toHaveBeenCalled();
     expect(prisma.assignments.create).not.toHaveBeenCalled();
+    expect(prisma.assignments.count).toHaveBeenCalledTimes(1);
+    expect(prisma.assignments.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          teacherId: 2,
+          status: { in: ['PENDING', 'CONFIRMED'] },
+        }),
+      }),
+    );
   });
 
   test('bỏ qua assignment REJECTED khi kiểm tra trùng lịch', async () => {

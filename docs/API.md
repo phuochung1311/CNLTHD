@@ -201,6 +201,7 @@ Khi chưa có phân công nào, `data` là mảng rỗng `[]`.
 | 401 | `Thiếu token xác thực` |
 | 401 | `Token không hợp lệ` |
 | 401 | `Token hết hạn` |
+| 400 | `Dữ liệu đầu vào không hợp lệ` — không gửi body hoặc body sai dạng (`field: body`) |
 | 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 
 ### `GET /assignments/:id`
