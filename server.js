@@ -1,5 +1,10 @@
 require('dotenv').config();
-const app = require('./app');
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('Thiếu JWT_SECRET trong .env');
+}
+
+const app = require('./src/app');
 
 const PORT = process.env.PORT || 3000;
 

@@ -1,16 +1,56 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const routes = require('./routes');
+const errorHandler = require('./middlewares/error.middleware');
+const prisma = require('./config/database');
+const requestLogger = require('./middlewares/requestLogger');
+const requestId = require('./middlewares/requestId.middleware');
+const { loginRateLimit } = require('./middlewares/rateLimit.middleware');
+const AppError = require('./utils/AppError');
 
 const app = express();
 
+app.use(requestId);
+app.use(requestLogger);
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/', (req, res) => {
-    res.status(200).json({ message: 'Hệ thống Phân công Giảng dạy API đang chạy'});
-})
+// Giới hạn request chung cho API để giảm spam mà không thay thế limiter riêng của login.
+const apiRateLimit = rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+    limit: Number(process.env.RATE_LIMIT_MAX) || 100,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Quá nhiều yêu cầu, vui lòng thử lại sau',
+        errors: null,
+    },
+});
+
+app.get('/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.status(200).json({ status: 'ok', message: 'Hệ thống Phân công Giảng dạy API đang chạy' });
+    } catch (error) {
+        res.status(503).json({ status: 'error', message: 'Database không khả dụng' });
+    }
+});
+
+// Gắn router chính
+app.use('/api/v1/auth/login', loginRateLimit);
+app.use('/api/v1', apiRateLimit, routes);
+
+// Tiêu chí Tuần 1: Đường dẫn không tồn tại trả 404 dạng JSON
+app.use((req, res, next) => {
+    next(new AppError('Đường dẫn không tồn tại', 404));
+});
+
+// Middleware xử lý lỗi tập trung phải nằm cuối cùng
+app.use(errorHandler);
 
 module.exports = app;

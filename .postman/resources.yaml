@@ -1,0 +1,15 @@
+# Use this workspace to collaborate
+workspace:
+  id: f5fad97e-2cfc-432d-85c5-44e33ed20738
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/Teaching Assignment API - Latency Test: 1879565b-aca7-402a-9ba4-1003a20c9449
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/
