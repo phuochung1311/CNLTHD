@@ -13,6 +13,13 @@ const idParam = {
     }),
 };
 
+const updateAssignment = {
+	params: idParam.params,
+	body: z.object({
+		teacherId: z.number().int().positive(),
+	}),
+};
+
 // ID trong request phải là số nguyên dương để tránh truy vấn bản ghi không hợp lệ.
 const positiveId = z.coerce.number().int().positive();
 
@@ -50,6 +57,7 @@ const assignmentIdSchema = z.object({
 
 module.exports = {
     createAssignment,
+	updateAssignment,
     idParam,
     assignmentSchema,
     classSchema,

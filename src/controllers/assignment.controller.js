@@ -22,3 +22,27 @@ exports.remove = async (req, res) => {
   await assignmentService.remove(req.validated.params.id);
   success(res, null, 'Xóa phân công thành công');
 };
+
+exports.updateTeacher = async (req, res) => {
+  success(
+    res,
+    await assignmentService.updateTeacher(req.validated.params.id, req.validated.body.teacherId),
+    'Cập nhật giảng viên thành công',
+  );
+};
+
+exports.confirm = async (req, res) => {
+  success(
+    res,
+    await assignmentService.confirm(req.validated.params.id, req.user.id),
+    'Đã chấp nhận phân công',
+  );
+};
+
+exports.reject = async (req, res) => {
+  success(
+    res,
+    await assignmentService.reject(req.validated.params.id, req.user.id),
+    'Đã từ chối phân công',
+  );
+};

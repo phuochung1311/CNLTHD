@@ -6,7 +6,7 @@ jest.mock('../src/config/database', () => {
     users: { findUnique: jest.fn() },
     assignments: {
       findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(),
-      create: jest.fn(), delete: jest.fn(), count: jest.fn(),
+      create: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn(),
     },
     $queryRaw: jest.fn(),
   };
@@ -34,6 +34,7 @@ beforeEach(() => {
   prisma.assignments.findFirst.mockResolvedValue(null);
   prisma.assignments.count.mockResolvedValue(0);
   prisma.assignments.create.mockResolvedValue(CREATED);
+  prisma.assignments.update.mockResolvedValue({ ...CREATED, status: 'CONFIRMED' });
 });
 
 describe('assignmentService.create', () => {
@@ -153,5 +154,31 @@ describe('assignmentService.getById', () => {
   test('404 khi không tìm thấy phân công', async () => {
     prisma.assignments.findUnique.mockResolvedValue(null);
     await expect(service.getById(123)).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe('assignmentService status workflow', () => {
+  test('teacher có thể xác nhận assignment của chính mình', async () => {
+    prisma.assignments.findUnique.mockResolvedValue({
+      ...CREATED,
+      status: 'PENDING',
+      teacher: { id: 2 },
+    });
+
+    await expect(service.confirm(10, 2)).resolves.toMatchObject({ status: 'CONFIRMED' });
+    expect(prisma.assignments.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'CONFIRMED' } }),
+    );
+  });
+
+  test('teacher không thể cập nhật assignment của người khác', async () => {
+    prisma.assignments.findUnique.mockResolvedValue({
+      ...CREATED,
+      status: 'PENDING',
+      teacherId: 3,
+    });
+
+    await expect(service.reject(10, 2)).rejects.toMatchObject({ statusCode: 403 });
+    expect(prisma.assignments.update).not.toHaveBeenCalled();
   });
 });
