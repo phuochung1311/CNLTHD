@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/courses"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: text
+  content: '{"courseCode":"POSTMAN101","name":"Kiem thu Postman","credits":3}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Tạo môn học thành công', function () {
+          pm.response.to.have.status(201);
+      });
+      const json = pm.response.json();
+      pm.collectionVariables.set('courseId', json.data.id);
+    language: text/javascript
+order: 6000

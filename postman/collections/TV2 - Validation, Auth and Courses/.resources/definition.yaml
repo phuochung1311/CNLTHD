@@ -1,0 +1,6 @@
+$kind: collection
+description: Collection kiểm thử validation, error handler, authentication, rate limit và CRUD Courses.
+variables:
+  baseUrl: http://localhost:3000
+  token: ""
+  courseId: "1"
