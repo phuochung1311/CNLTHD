@@ -1,13 +1,6 @@
 $kind: http-request
 url: "{{baseUrl}}/api/v1/assignments"
 method: GET
-body:
-  type: json
-  content: ""
-auth:
-  type: bearer
-  credentials:
-    token: "{{json_web_token_19lw}}"
 scripts:
   - type: afterResponse
     code: |-

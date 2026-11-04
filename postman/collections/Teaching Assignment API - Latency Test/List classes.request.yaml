@@ -1,25 +1,6 @@
 $kind: http-request
 url: "{{baseUrl}}/api/v1/classes"
 method: GET
-body:
-  type: json
-  content: "{\r
-
-    \  \"classCode\": \"WEB104A\",\r
-
-    \  \"courseId\": 1,\r
-
-    \  \"room\": \"A105\",\r
-
-    \  \"startTime\": \"2026-10-16T08:00:00+07:00\",\r
-
-    \  \"endTime\": \"2026-10-16T11:00:00+07:00\"\r
-
-    }"
-auth:
-  type: bearer
-  credentials:
-    token: "{{json_web_token_19lw}}"
 scripts:
   - type: afterResponse
     code: |-

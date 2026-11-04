@@ -1,15 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/api/v1/auth/login"
-method: POST
-body:
-  type: json
-  content: "{\r
-
-    \    \"email\": \"admin@uni.edu\",\r
-
-    \  \"password\": \"123456\"\r
-
-    }"
+url: "{{baseUrl}}/api/v1/courses"
+method: GET
 scripts:
   - type: afterResponse
     code: |-

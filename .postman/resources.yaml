@@ -6,9 +6,7 @@ workspace:
 
 cloudResources:
   collections:
-    ../postman/collections/Teaching Assignment API - Latency Test: 1879565b-aca7-402a-9ba4-1003a20c9449
-    ../postman/collections/TV2 - Validation, Auth and Courses Copy: 935ec744-19c6-4181-b7b0-c98c1259be02
-    ../postman/collections/TV2 - Validation, Auth and Courses: 13409a12-7e80-48d0-bdfc-92e8e100fcc6
+    ../postman/collections/Teaching Assignment API - Latency Test: fa95c748-8af9-4425-a3e6-09d4302f83ae
 
 # All resources in the `postman/` folder are automatically registered in Local View.
 # Point to additional files outside the `postman/` folder to register them individually. Example:

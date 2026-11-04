@@ -1,9 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/api/v1/debug/validate"
-method: POST
-headers:
-  Content-Type: application/json
-body:
-  type: text
-  content: "{}"
-order: 2000

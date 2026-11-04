@@ -5,3 +5,5 @@ dist/
 coverage/
 .vscode/
 repomix-output.xml
+.postman/
+postman/
