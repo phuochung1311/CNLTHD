@@ -52,8 +52,8 @@ Thứ tự dưới đây theo code của `assignment.service`: hệ thống dừ
 | `teacherId` có trong bảng `Users`? | `AppError` | 404 | `Giảng viên không tồn tại` |
 | Người dùng đó có `role = TEACHER`? | `AppError` | 400 | `Người dùng này không phải giảng viên` |
 | Lớp chưa có giảng viên dạy? | `AppError` | 409 | `Lớp này đã có giảng viên phụ trách` |
-| Giảng viên không trùng lịch? | `AppError` | 409 | `Giảng viên trùng lịch với lớp {classCode}` |
 | Giảng viên chưa dạy đủ 3 lớp? (rule của TV4) | `AppError` | 409 | `Giảng viên đã được phân công tối đa 3 lớp` |
+| Giảng viên không trùng lịch? | `AppError` | 409 | `Giảng viên trùng lịch với lớp {classCode}` |
 | Tạo phân công (`status = PENDING`) | lỗi bất ngờ | 500 | `Lỗi máy chủ nội bộ` |
 | Thành công | | 201 | `Phân công thành công` |
 
@@ -62,11 +62,15 @@ Lưu ý theo `erd.md`:
 - `Assignments.classId` là `UNIQUE`, nên CSDL là lớp bảo vệ cuối cùng cho việc "một lớp một giảng viên". Bước kiểm tra "lớp đã có giảng viên?" trong service chạy trước để trả 409 rõ ràng. Nếu hai request đến cùng lúc cùng lọt qua bước này, request thứ hai bị CSDL từ chối bằng lỗi Prisma `P2002`. `errorHandler` đã ánh xạ `P2002` thành 409 (xem `error.middleware.js`), nhưng message lúc đó là câu chung "Dữ liệu bị trùng (vi phạm unique)" chứ không phải message nghiệp vụ.
 - `Assignments.status` có ba giá trị `PENDING | CONFIRMED | REJECTED`. Phân công mới luôn có `status = PENDING`.
 
-## Chưa có trong code
+## Trạng thái triển khai hiện tại
 
-- **`prisma.$transaction`:** kế hoạch giao cho TV1 nhưng chưa có trong code. Hiện các bước kiểm tra và bước tạo chạy riêng lẻ, nên hai request đồng thời có thể cùng lọt qua bước kiểm tra trùng lịch và giới hạn 3 lớp. Ràng buộc `UNIQUE classId` chỉ chặn được việc một lớp có hai giảng viên, không chặn được trùng lịch hay vượt 3 lớp. Khi có transaction, thêm vào sơ đồ và bảng trên.
-- **Lọc `REJECTED` (dự kiến, chờ TV1):** truy vấn trùng lịch và đếm 3 lớp hiện **không** lọc `status`. Vì chưa có endpoint đổi `status` nên mọi phân công đều là `PENDING` và chưa gây sai lệch. Khi TV1 làm, quy tắc là chỉ tính phân công `PENDING` và `CONFIRMED`.
-- **`PUT`, `PATCH .../reject`, xác nhận (hướng phát triển):** không có trong kế hoạch 5 tuần và chưa có route hay service. Thiết kế đã thảo luận: giảng viên từ chối thì chuyển `REJECTED`; Admin đổi giảng viên (`PUT`, reset về `PENDING`) hoặc xóa (`DELETE`). Với thiết kế này, phân công `REJECTED` vẫn chiếm `classId` (UNIQUE), nên lớp chỉ được phân công lại sau khi Admin đổi giảng viên hoặc xóa phân công.
+Các nội dung trước đây đã được triển khai:
+
+- `create`, `updateTeacher` và `resetToPending` chạy trong `prisma.$transaction`; các thao tác kiểm tra giới hạn và lịch khóa dòng giảng viên bằng `FOR UPDATE`. Ràng buộc `UNIQUE classId` vẫn là lớp bảo vệ cuối cùng cho việc một lớp chỉ có một giảng viên.
+- `ACTIVE_STATUSES` gồm `PENDING` và `CONFIRMED`, nên assignment `REJECTED` không bị tính vào giới hạn 3 lớp hoặc kiểm tra trùng lịch.
+- Các route `PUT /:id`, `PATCH /:id`, `PATCH /:id/reject`, `PATCH /:id/confirm` và `DELETE /:id` đã có. `PATCH /:id` chỉ cho `ADMIN`, chỉ chuyển `REJECTED` về `PENDING` sau khi kiểm tra lại giới hạn và lịch; `PUT` cũng reset trạng thái về `PENDING`.
+
+`changeStatus` dùng `updateMany` với điều kiện `status = PENDING`, vì vậy request xác nhận/từ chối đến sau request khác sẽ nhận 409 thay vì ghi đè trạng thái mới.
 
 ## Mã trạng thái HTTP trong luồng này
 

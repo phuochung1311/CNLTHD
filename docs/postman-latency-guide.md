@@ -27,6 +27,8 @@ http://localhost:3000/health
 4. Mở Collection **Teaching Assignment API - Latency Test**.
 5. Nếu server chạy cổng khác, sửa biến `baseUrl` trong Collection.
 
+Collection tự đăng nhập bằng các biến `loginEmail` và `loginPassword` khi `accessToken` chưa có hoặc đã hết hạn, sau đó gửi Bearer token cho `GET /api/v1/assignments`. Nếu dùng tài khoản khác, sửa hai biến này trong collection trước khi chạy.
+
 ## Các endpoint được đo
 
 | Request | Mục đích |
