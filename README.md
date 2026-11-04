@@ -232,9 +232,9 @@ Các bài kiểm thử hiện có (Jest + Supertest) không cần kết nối CS
 - [Sơ đồ request chức năng phân công](docs/assignment-request-flow.md)
 - [Tài liệu API (phân công)](docs/API.md)
 - [Kết quả kiểm thử của TV2](docs/tv2-kqtest.md)
+- [Postman Collection của TV2](docs/postman-tv2.collection.json)
 - [Postman Collection đo độ trễ](docs/postman-latency.collection.json)
 - [Hướng dẫn chạy Postman Collection Runner](docs/postman-latency-guide.md)
-- [Checklist bảo mật](security-checklist.md)
 
 ## Quy ước làm việc nhóm
 - Không commit thẳng vào `main`. Tạo nhánh `<tên của thành viên>` (ví dụ: phuochung, anhkhang...), tạo Pull Request, người khác review rồi mới merge.
