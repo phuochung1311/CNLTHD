@@ -4,6 +4,12 @@ variables:
   - key: baseUrl
     value: http://localhost:3000
     disabled: false
-  - key: json_web_token_0s11
-    secret: true
+  - key: loginEmail
+    value: admin@uni.edu
+    disabled: false
+  - key: loginPassword
+    value: '123456'
+    disabled: false
+  - key: accessToken
+    value: ''
     disabled: false

@@ -31,6 +31,14 @@ exports.updateTeacher = async (req, res) => {
   );
 };
 
+exports.resetStatus = async (req, res) => {
+  success(
+    res,
+    await assignmentService.resetToPending(req.validated.params.id),
+    'Đã đặt lại phân công về trạng thái chờ',
+  );
+};
+
 exports.confirm = async (req, res) => {
   success(
     res,

@@ -89,13 +89,17 @@ async function updateTeacher(id, teacherId) {
     });
     if (!assignment) throw new AppError('Không tìm thấy phân công', 404);
 
+    if (teacherId !== assignment.teacherId || assignment.status === 'REJECTED') {
+      await tx.$queryRaw`SELECT id FROM Users WHERE id = ${teacherId} FOR UPDATE`;
+    }
+
     const teacher = await tx.users.findUnique({ where: { id: teacherId } });
     if (!teacher) throw new AppError('Giảng viên không tồn tại', 404);
     if (teacher.role !== 'TEACHER') {
       throw new AppError('Người dùng này không phải giảng viên', 400);
     }
 
-    if (teacherId !== assignment.teacherId) {
+    if (teacherId !== assignment.teacherId || assignment.status === 'REJECTED') {
       const assignmentCount = await tx.assignments.count({
         where: { teacherId, status: { in: ACTIVE_STATUSES } },
       });
@@ -123,6 +127,45 @@ async function updateTeacher(id, teacherId) {
   });
 }
 
+async function resetToPending(id) {
+  return prisma.$transaction(async (tx) => {
+    const assignment = await tx.assignments.findUnique({
+      where: { id },
+      include: { class: true },
+    });
+    if (!assignment) throw new AppError('Không tìm thấy phân công', 404);
+    if (assignment.status !== 'REJECTED') {
+      throw new AppError('Chỉ phân công đã bị từ chối mới được đặt lại về chờ', 409);
+    }
+
+    await tx.$queryRaw`SELECT id FROM Users WHERE id = ${assignment.teacherId} FOR UPDATE`;
+
+    const assignmentCount = await tx.assignments.count({
+      where: { teacherId: assignment.teacherId, status: { in: ACTIVE_STATUSES } },
+    });
+    if (assignmentCount >= MAX_ASSIGNMENTS_PER_TEACHER) {
+      throw new AppError('Giảng viên đã được phân công tối đa 3 lớp', 409);
+    }
+
+    const conflict = await findScheduleConflict(
+      assignment.teacherId,
+      assignment.class.startTime,
+      assignment.class.endTime,
+      assignment.classId,
+      tx,
+    );
+    if (conflict) {
+      throw new AppError(`Giảng viên trùng lịch với lớp ${conflict.class.classCode}`, 409);
+    }
+
+    return tx.assignments.update({
+      where: { id },
+      data: { status: 'PENDING' },
+      include,
+    });
+  });
+}
+
 async function changeStatus(id, teacherId, status) {
   const assignment = await getById(id);
   if (assignment.teacherId !== teacherId) {
@@ -132,11 +175,15 @@ async function changeStatus(id, teacherId, status) {
     throw new AppError('Chỉ phân công đang chờ mới có thể cập nhật', 409);
   }
 
-  return prisma.assignments.update({
-    where: { id },
+  const result = await prisma.assignments.updateMany({
+    where: { id, teacherId, status: 'PENDING' },
     data: { status },
-    include,
   });
+  if (result.count === 0) {
+    throw new AppError('Chỉ phân công đang chờ mới có thể cập nhật', 409);
+  }
+
+  return getById(id);
 }
 
 module.exports = {
@@ -144,6 +191,7 @@ module.exports = {
   getById,
   create,
   updateTeacher,
+  resetToPending,
   confirm: (id, teacherId) => changeStatus(id, teacherId, 'CONFIRMED'),
   reject: (id, teacherId) => changeStatus(id, teacherId, 'REJECTED'),
   remove,
