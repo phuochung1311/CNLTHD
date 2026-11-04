@@ -23,7 +23,7 @@ http://localhost:3000/health
 
 1. Mở Postman.
 2. Chọn **Import**.
-3. Chọn file `docs/postman-latency.collection.md`.
+3. Chọn file `docs/postman-latency.collection.json`.
 4. Mở Collection **Teaching Assignment API - Latency Test**.
 5. Nếu server chạy cổng khác, sửa biến `baseUrl` trong Collection.
 
