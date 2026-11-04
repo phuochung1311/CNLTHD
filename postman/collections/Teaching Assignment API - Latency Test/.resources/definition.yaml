@@ -1,0 +1,4 @@
+$kind: collection
+description: Collection đo độ trễ các endpoint đọc dữ liệu bằng Collection Runner.
+variables:
+  baseUrl: http://localhost:3000

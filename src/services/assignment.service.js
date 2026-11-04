@@ -73,7 +73,7 @@ async function create({ classId, teacherId }) {
 
     // Unique classId của DB chặn phân công trùng cùng một lớp.
     return tx.assignments.create({ data: { classId, teacherId }, include });
-  }, { isolationLevel: 'Serializable' });
+  });
 }
 
 async function remove(id) {
