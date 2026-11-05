@@ -22,6 +22,8 @@ Ví dụ lỗi kiểm tra dữ liệu (HTTP 400):
   "message": "Dữ liệu đầu vào không hợp lệ",
   "errors": [
     {
+  }
+  ```
       "field": "body.classId",
       "message": "Invalid input: expected number, received string"
     }
@@ -37,7 +39,6 @@ Ví dụ lỗi kiểm tra dữ liệu (HTTP 400):
 | 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 | 500 | `Lỗi máy chủ nội bộ` — lỗi hệ thống không được trả chi tiết cho client |
 
-```
 ### Mã định danh request (`X-Request-Id`)
 
 Mọi response (kể cả lỗi 400, 401, 403, 404, 409, 500) đều có header `X-Request-Id`.
@@ -128,6 +129,44 @@ Token có hiệu lực 1 giờ. Gửi token ở các request sau trong header `A
 | 401 | `Email hoặc mật khẩu không đúng` — sai mật khẩu hoặc email không tồn tại (cùng một thông báo để không lộ email nào có trong hệ thống) |
 | 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 
+## Courses
+
+Môn học là danh mục được dùng làm dữ liệu gốc cho các lớp học.
+
+### `GET /courses`
+
+Lấy danh sách môn học, sắp xếp theo `id` tăng dần. Endpoint công khai.
+
+**Response thành công (HTTP 200):** `data` là mảng các môn học.
+
+### `GET /courses/:id`
+
+Lấy chi tiết một môn học. Endpoint công khai.
+
+**Mã lỗi:** `400` nếu ID không hợp lệ, `404` nếu không tìm thấy môn học.
+
+### `POST /courses`
+
+Tạo môn học mới. Yêu cầu token ADMIN.
+
+```json
+{
+  "courseCode": "WEB101",
+  "name": "Lập trình Web",
+  "credits": 3
+}
+```
+
+Trả `201` khi tạo thành công và `409` nếu `courseCode` bị trùng.
+
+### `PATCH /courses/:id`
+
+Cập nhật một phần môn học. Yêu cầu token ADMIN. Có thể cập nhật `courseCode`, `name` hoặc `credits`; phải gửi ít nhất một trường.
+
+### `DELETE /courses/:id`
+
+Xóa môn học. Yêu cầu token ADMIN. Trả `409` nếu môn học đang được lớp học tham chiếu.
+
 ## Assignments
 
 Một phân công gắn một giảng viên với một lớp học. Mỗi lớp chỉ có tối đa một phân công.
@@ -140,7 +179,7 @@ Trường `status` nhận một trong các giá trị:
 | `CONFIRMED` | Đã xác nhận |
 | `REJECTED` | Bị từ chối |
 
-Hiện chưa có endpoint để đổi `status`; phân công tạo mới luôn có `status` là `PENDING`.
+Phân công tạo mới có `status = PENDING`. Giảng viên có thể xác nhận hoặc từ chối phân công của mình; Admin có thể đổi giảng viên hoặc đặt lại một phân công bị từ chối về `PENDING`.
 
 Trường `teacher` chỉ trả `id`, `fullName` và `email`, không trả mật khẩu.
 
@@ -336,7 +375,7 @@ Hai trường phải là số, không phải chuỗi: gửi `"classId": "1"` s�
 4. Giảng viên tồn tại (404) và có vai trò giảng viên (400).
 5. Lớp chưa có giảng viên phụ trách (409).
 6. Giảng viên không trùng lịch với lớp đã nhận (409).
-7. Giảng viên chưa được phân công đủ 3 lớp (409). Số lớp được tính trên mọi phân công của giảng viên, không phân biệt `status`.
+7. Giảng viên chưa được phân công đủ 3 lớp đang hoạt động (409). Chỉ các phân công `PENDING` và `CONFIRMED` được tính; `REJECTED` không được tính.
 
 **Mã lỗi:**
 
@@ -357,6 +396,32 @@ Hai trường phải là số, không phải chuỗi: gửi `"classId": "1"` s�
 | 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 
 **Xử lý đồng thời:** việc tạo phân công chạy trong một transaction và khóa dòng giảng viên (`SELECT ... FOR UPDATE`), nên các request phân công cho cùng một giảng viên được xử lý lần lượt; kiểm tra trùng lịch và giới hạn 3 lớp luôn đọc dữ liệu mới nhất. Hai request cùng gán một lớp cho hai giảng viên khác nhau không bị khóa chung; khi đó ràng buộc duy nhất của `classId` chặn request đến sau và trả 409 `Dữ liệu bị trùng (vi phạm unique)`.
+
+### `PUT /assignments/:id`
+
+Admin đổi giảng viên phụ trách. Body bắt buộc:
+
+```json
+{
+  "teacherId": 2
+}
+```
+
+Thao tác đặt trạng thái phân công về `PENDING` và kiểm tra giảng viên mới có tồn tại, đúng vai trò, không vượt quá 3 phân công đang hoạt động và không trùng lịch.
+
+### `PATCH /assignments/:id`
+
+Admin đặt lại một phân công `REJECTED` về `PENDING`. Chỉ phân công đang ở trạng thái `REJECTED` mới được đặt lại.
+
+### `PATCH /assignments/:id/confirm`
+
+Giảng viên được phân công xác nhận phân công của chính mình. Chỉ phân công `PENDING` mới được xác nhận; request yêu cầu token TEACHER đúng với `teacherId` của phân công.
+
+### `PATCH /assignments/:id/reject`
+
+Giảng viên được phân công từ chối phân công của chính mình. Chỉ phân công `PENDING` mới được từ chối; request yêu cầu token TEACHER đúng với `teacherId` của phân công.
+
+Các endpoint trên trả `401` khi thiếu hoặc sai token, `403` khi không đúng vai trò hoặc không phải giảng viên được phân công, `404` khi không tìm thấy phân công và `409` khi trạng thái hiện tại không cho phép thao tác.
 
 ### `DELETE /assignments/:id`
 

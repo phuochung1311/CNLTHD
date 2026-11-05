@@ -102,8 +102,10 @@ Token hết hạn sau thời gian `JWT_EXPIRES_IN`; khi đó đăng nhập lại
 |---|---|
 | `/auth/login`, `/health`, `/api/v1/ping` | Không cần token |
 | `/teachers` (mọi method) | Token ADMIN |
-| `/classes`, `/assignments`: POST, PATCH, DELETE | Token ADMIN |
-| `/classes`, `/assignments`: GET | Chưa yêu cầu token |
+| `/courses`, `/classes`: GET | Không cần token |
+| `/courses`, `/classes`: POST, PATCH, DELETE | Token ADMIN |
+| `/assignments`: GET | Token ADMIN hoặc TEACHER |
+| `/assignments`: POST, PUT, PATCH, DELETE | Token ADMIN, riêng `confirm/reject` dùng token TEACHER |
 
 Mã lỗi xác thực: 401 (thiếu token, token sai hoặc hết hạn, sai email hoặc mật khẩu), 403 (token hợp lệ nhưng không phải ADMIN), 429 (vượt giới hạn số request).
 
@@ -126,6 +128,16 @@ Chi tiết request và response của phân công (assignments): [docs/API.md](d
 | POST | `/classes` | Tạo lớp | ADMIN | 400, 401, 403, 404 (môn không tồn tại), 409 (trùng mã lớp) |
 | PATCH | `/classes/:id` | Sửa lớp (gửi trường nào sửa trường đó; đổi giờ sẽ kiểm tra trùng lịch giảng viên) | ADMIN | 400, 401, 403, 404, 409 |
 | DELETE | `/classes/:id` | Xóa lớp (không xóa được nếu đã phân công) | ADMIN | 401, 403, 404, 409 |
+
+### Môn học (`/api/v1/courses`)
+
+| Method | Đường dẫn | Mô tả | Quyền | Lỗi chính |
+|---|---|---|---|---|
+| GET | `/courses` | Danh sách môn học | Công khai | 429 |
+| GET | `/courses/:id` | Chi tiết môn học | Công khai | 400, 404, 429 |
+| POST | `/courses` | Tạo môn học | ADMIN | 400, 401, 403, 409 |
+| PATCH | `/courses/:id` | Cập nhật môn học | ADMIN | 400, 401, 403, 404, 409 |
+| DELETE | `/courses/:id` | Xóa môn học | ADMIN | 401, 403, 404, 409 |
 
 Ví dụ body tạo lớp (`startTime`, `endTime` dùng ISO 8601 có múi giờ; kèm header `Authorization`):
 
@@ -155,12 +167,16 @@ Quy tắc: `classCode` chỉ gồm chữ HOA và số (không dấu cách, khôn
 
 | Method | Đường dẫn | Mô tả | Quyền | Lỗi chính |
 |---|---|---|---|---|
-| GET | `/assignments` | Danh sách phân công | Công khai | |
-| GET | `/assignments/:id` | Chi tiết phân công | Công khai | 400, 404 |
+| GET | `/assignments` | Danh sách phân công | ADMIN/TEACHER | 401, 429 |
+| GET | `/assignments/:id` | Chi tiết phân công | ADMIN/TEACHER | 400, 401, 404, 429 |
 | POST | `/assignments` | Phân công giảng viên cho lớp | ADMIN | 400, 401, 403, 404, 409 |
+| PUT | `/assignments/:id` | Đổi giảng viên, đặt lại `PENDING` | ADMIN | 400, 401, 403, 404, 409 |
+| PATCH | `/assignments/:id` | Đặt lại phân công bị từ chối về `PENDING` | ADMIN | 400, 401, 403, 404, 409 |
+| PATCH | `/assignments/:id/confirm` | Giảng viên xác nhận phân công của mình | TEACHER | 401, 403, 404, 409 |
+| PATCH | `/assignments/:id/reject` | Giảng viên từ chối phân công của mình | TEACHER | 401, 403, 404, 409 |
 | DELETE | `/assignments/:id` | Xóa phân công | ADMIN | 400, 401, 403, 404 |
 
-Quy tắc phân công: mỗi lớp chỉ có một giảng viên; giảng viên không được trùng lịch; mỗi giảng viên dạy tối đa 3 lớp (vi phạm trả 409). Phân công mới có `status = PENDING`; hiện chưa có endpoint đổi `status`.
+Quy tắc phân công: mỗi lớp chỉ có một giảng viên; giảng viên không được trùng lịch; mỗi giảng viên có tối đa 3 phân công đang hoạt động (`PENDING` hoặc `CONFIRMED`). Phân công mới có `status = PENDING`; giảng viên có thể xác nhận hoặc từ chối phân công của mình.
 
 ## Kiểm tra nhanh (dùng Postman)
 

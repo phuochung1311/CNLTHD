@@ -30,7 +30,7 @@ npm test
 
 Các test chính của TV2:
 
-- `tests/valdiations-error.test.js`
+- `tests/validations-error.test.js`
 - `tests/course.service.test.js`
 - `tests/login-rate-limit.test.js`
 - `tests/auth.test.js`
