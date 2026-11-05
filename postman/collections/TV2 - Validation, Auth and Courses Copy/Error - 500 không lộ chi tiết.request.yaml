@@ -1,4 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/api/v1/debug/crash"
-method: GET
-order: 4000
