@@ -29,6 +29,7 @@ Server chạy tại `http://localhost:3000` (hoặc cổng đặt bằng `PORT` 
 | `JWT_SECRET` | **Bắt buộc.** Khóa ký token; thiếu thì server dừng ngay khi khởi động |
 | `JWT_EXPIRES_IN` | Thời hạn token, ví dụ `1h` (mặc định `1h`) |
 | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX` | Giới hạn số request tới `/api/v1` trong một khoảng thời gian (mặc định 100 request mỗi 15 phút) |
+| `LOGIN_RATE_LIMIT_WINDOW_MS`, `LOGIN_RATE_LIMIT_MAX` | Giới hạn riêng số lần đăng nhập thất bại (mặc định 5 lần mỗi 15 phút; lần đăng nhập thành công không bị tính) |
 | `NODE_ENV` | Tùy chọn. Khác `production` thì bật các route `/debug` |
 | `LOG_LEVEL` | Tùy chọn. Mức log của pino |
 
@@ -61,7 +62,7 @@ src/
   controllers/         Nhận request, gọi service, trả response
   services/            Nghiệp vụ và truy cập CSDL
   validations/         Schema Zod
-  middlewares/         auth, error, requestId, requestLogger, validate
+  middlewares/         auth, error, rateLimit, requestId, requestLogger, validate
   utils/               AppError, logger, responseFormat
 prisma/                schema.prisma, migrations, seed.js
 tests/                 Kiểm thử Jest + Supertest
@@ -74,10 +75,57 @@ Mật khẩu của mọi tài khoản: `123456`. Các tài khoản này chỉ d�
 | Vai trò | Email |
 |---|---|
 | Admin (Trưởng khoa) | `admin@uni.edu` |
-| Giảng viên | `teacher1@uni.edu` |
-| Giảng viên | `teacher2@uni.edu` |
+| Giảng viên (Nguyễn Văn A) | `teacher1@uni.edu` |
+| Giảng viên (Trần Thị B) | `teacher2@uni.edu` |
+| Giảng viên (Lê Văn C) | `teacher3@uni.edu` |
+| Giảng viên (Phạm Thị D) | `teacher4@uni.edu` |
 
-Dữ liệu mẫu còn có 2 môn (`WEB101`, `DB201`) và 4 lớp. `WEB101A` và `WEB101B` có giờ học giao nhau để thử ca trùng lịch.
+### Bảng `COURSES`
+
+Seed tạo 4 môn học:
+
+| Mã môn | Tên môn | Số tín chỉ |
+|---|---|---:|
+| `WEB101` | Lập trình Web | 3 |
+| `DB201` | Cơ sở dữ liệu | 3 |
+| `NET301` | Mạng máy tính | 3 |
+| `ALG202` | Cấu trúc dữ liệu và giải thuật | 4 |
+
+### Bảng `CLASSES`
+
+Seed tạo 12 lớp. Giờ dưới đây theo múi giờ `+07:00`; khi lưu vào MySQL/Prisma, `DateTime` được chuyển về UTC.
+
+| Mã lớp | Mã môn | Phòng | Thời gian | Trạng thái phân công / mục đích kiểm thử |
+|---|---|---|---|---|
+| `WEB101A` | `WEB101` | `A101` | 12/10, 07:00-10:00 | `CONFIRMED` bởi teacher2; dùng thử từ chối assignment đã xác nhận |
+| `WEB101B` | `WEB101` | `A102` | 12/10, 09:00-12:00 | Chưa phân công; giao với `WEB101A`, thử lỗi trùng lịch |
+| `WEB101D` | `WEB101` | `A104` | 12/10, 10:00-12:00 | Chưa phân công; liền kề `WEB101A`, không bị xem là trùng lịch |
+| `ALG202A` | `ALG202` | `B203` | 13/10, 13:00-16:00 | `PENDING` bởi teacher2; dùng thử confirm/reject |
+| `WEB101C` | `WEB101` | `A103` | 14/10, 07:00-10:00 | `CONFIRMED` bởi teacher1 |
+| `DB201A` | `DB201` | `B201` | 14/10, 07:00-10:00 | `REJECTED` bởi teacher3; reset sẽ lỗi trùng lịch |
+| `NET301A` | `NET301` | `C301` | 14/10, 08:00-11:00 | `CONFIRMED` bởi teacher3 |
+| `DB201B` | `DB201` | `B202` | 15/10, 13:00-16:00 | `CONFIRMED` bởi teacher1 |
+| `NET301B` | `NET301` | `C302` | 16/10, 07:00-10:00 | `PENDING` bởi teacher1; teacher1 đã đủ 3 lớp hoạt động |
+| `ALG202B` | `ALG202` | `B204` | 19/10, 07:00-10:00 | `REJECTED` bởi teacher4; reset thành công |
+| `DB201C` | `DB201` | `B205` | 21/10, 13:00-16:00 | Chưa phân công; dùng thử xóa lớp/phân công |
+| `NET301C` | `NET301` | `C303` | 22/10, 07:00-10:00 | Chưa phân công; gán cho teacher1 sẽ vượt giới hạn 3 lớp |
+
+### Bảng `ASSIGNMENTS`
+
+Seed tạo 8 phân công. Mỗi lớp chỉ có tối đa một phân công vì `Assignments.classId` là `UNIQUE`. Chỉ `PENDING` và `CONFIRMED` được tính vào giới hạn 3 lớp và kiểm tra trùng lịch.
+
+| Mã lớp | Giảng viên | Trạng thái | Mục đích kiểm thử |
+|---|---|---|---|
+| `WEB101C` | `teacher1@uni.edu` | `CONFIRMED` | Lớp hoạt động của teacher1 |
+| `DB201B` | `teacher1@uni.edu` | `CONFIRMED` | Lớp hoạt động của teacher1 |
+| `NET301B` | `teacher1@uni.edu` | `PENDING` | Teacher1 đã đủ 3 lớp hoạt động |
+| `WEB101A` | `teacher2@uni.edu` | `CONFIRMED` | Từ chối sẽ trả 409 |
+| `ALG202A` | `teacher2@uni.edu` | `PENDING` | Thử confirm/reject; teacher2 còn 1 suất |
+| `NET301A` | `teacher3@uni.edu` | `CONFIRMED` | Gây trùng lịch khi reset `DB201A` |
+| `DB201A` | `teacher3@uni.edu` | `REJECTED` | Thử reset về `PENDING` nhưng bị trùng lịch |
+| `ALG202B` | `teacher4@uni.edu` | `REJECTED` | Teacher4 không có lớp hoạt động; reset thành công |
+
+Tổng hợp trạng thái assignment: `3 PENDING`, `3 CONFIRMED`, `2 REJECTED`.
 
 ## Xác thực và phân quyền
 
@@ -107,7 +155,7 @@ Token hết hạn sau thời gian `JWT_EXPIRES_IN`; khi đó đăng nhập lại
 | `/assignments`: GET | Token ADMIN hoặc TEACHER |
 | `/assignments`: POST, PUT, PATCH, DELETE | Token ADMIN, riêng `confirm/reject` dùng token TEACHER |
 
-Mã lỗi xác thực: 401 (thiếu token, token sai hoặc hết hạn, sai email hoặc mật khẩu), 403 (token hợp lệ nhưng không phải ADMIN), 429 (vượt giới hạn số request).
+Mã lỗi xác thực: 401 (thiếu token, token sai hoặc hết hạn, sai email hoặc mật khẩu), 403 (token hợp lệ nhưng vai trò không phù hợp với route), 429 (vượt giới hạn số request).
 
 ## API
 
@@ -119,15 +167,28 @@ Chi tiết request và response của phân công (assignments): [docs/API.md](d
 |---|---|---|---|---|
 | POST | `/auth/login` | Đăng nhập, nhận token | Công khai | 400, 401, 429 |
 
+### `POST /auth/change-password`
+
+Đổi mật khẩu của tài khoản đang đăng nhập. Yêu cầu token hợp lệ của chính tài khoản đó.
+
+```json
+{
+  "oldPassword": "123456",
+  "newPassword": "654321"
+}
+```
+
+Mã lỗi chính: `400` nếu dữ liệu không hợp lệ, `401` nếu thiếu token hoặc mật khẩu cũ không đúng, `429` nếu vượt giới hạn tốc độ.
+
 ### Lớp học (`/api/v1/classes`)
 
 | Method | Đường dẫn | Mô tả | Quyền | Lỗi chính |
 |---|---|---|---|---|
-| GET | `/classes` | Danh sách lớp (kèm môn học) | Công khai | |
-| GET | `/classes/:id` | Chi tiết lớp | Công khai | 400, 404 |
-| POST | `/classes` | Tạo lớp | ADMIN | 400, 401, 403, 404 (môn không tồn tại), 409 (trùng mã lớp) |
-| PATCH | `/classes/:id` | Sửa lớp (gửi trường nào sửa trường đó; đổi giờ sẽ kiểm tra trùng lịch giảng viên) | ADMIN | 400, 401, 403, 404, 409 |
-| DELETE | `/classes/:id` | Xóa lớp (không xóa được nếu đã phân công) | ADMIN | 401, 403, 404, 409 |
+| GET | `/classes` | Danh sách lớp (kèm môn học) | Công khai | 429 |
+| GET | `/classes/:id` | Chi tiết lớp | Công khai | 400, 404, 429 |
+| POST | `/classes` | Tạo lớp | ADMIN | 400, 401, 403, 404 (môn không tồn tại), 409 (trùng mã lớp), 429 |
+| PATCH | `/classes/:id` | Sửa lớp (gửi trường nào sửa trường đó; đổi giờ sẽ kiểm tra trùng lịch giảng viên) | ADMIN | 400, 401, 403, 404, 409, 429 |
+| DELETE | `/classes/:id` | Xóa lớp (không xóa được nếu đã phân công) | ADMIN | 401, 403, 404, 409, 429 |
 
 ### Môn học (`/api/v1/courses`)
 
@@ -135,9 +196,9 @@ Chi tiết request và response của phân công (assignments): [docs/API.md](d
 |---|---|---|---|---|
 | GET | `/courses` | Danh sách môn học | Công khai | 429 |
 | GET | `/courses/:id` | Chi tiết môn học | Công khai | 400, 404, 429 |
-| POST | `/courses` | Tạo môn học | ADMIN | 400, 401, 403, 409 |
-| PATCH | `/courses/:id` | Cập nhật môn học | ADMIN | 400, 401, 403, 404, 409 |
-| DELETE | `/courses/:id` | Xóa môn học | ADMIN | 401, 403, 404, 409 |
+| POST | `/courses` | Tạo môn học | ADMIN | 400, 401, 403, 409, 429 |
+| PATCH | `/courses/:id` | Cập nhật môn học | ADMIN | 400, 401, 403, 404, 409, 429 |
+| DELETE | `/courses/:id` | Xóa môn học | ADMIN | 401, 403, 404, 409, 429 |
 
 Ví dụ body tạo lớp (`startTime`, `endTime` dùng ISO 8601 có múi giờ; kèm header `Authorization`):
 
@@ -157,11 +218,11 @@ Quy tắc: `classCode` chỉ gồm chữ HOA và số (không dấu cách, khôn
 
 | Method | Đường dẫn | Mô tả | Quyền | Lỗi chính |
 |---|---|---|---|---|
-| GET | `/teachers` | Danh sách giảng viên | ADMIN | 401, 403 |
-| POST | `/teachers` | Tạo giảng viên (mật khẩu được băm bcrypt, không trả về) | ADMIN | 400, 401, 403, 409 (trùng email) |
-| GET | `/teachers/:id` | Chi tiết giảng viên | ADMIN | 400, 401, 403, 404 |
-| PATCH | `/teachers/:id` | Sửa giảng viên (hiện chỉ sửa `fullName`) | ADMIN | 400, 401, 403, 404 |
-| DELETE | `/teachers/:id` | Xóa giảng viên | ADMIN | 400, 401, 403, 404 |
+| GET | `/teachers` | Danh sách giảng viên | ADMIN | 401, 403, 429 |
+| POST | `/teachers` | Tạo giảng viên (mật khẩu được băm bcrypt, không trả về) | ADMIN | 400, 401, 403, 409 (trùng email), 429 |
+| GET | `/teachers/:id` | Chi tiết giảng viên | ADMIN | 400, 401, 403, 404, 429 |
+| PATCH | `/teachers/:id` | Sửa giảng viên (hiện chỉ sửa `fullName`) | ADMIN | 400, 401, 403, 404, 429 |
+| DELETE | `/teachers/:id` | Xóa giảng viên | ADMIN | 400, 401, 403, 404, 429 |
 
 ### Phân công (`/api/v1/assignments`)
 
@@ -169,12 +230,12 @@ Quy tắc: `classCode` chỉ gồm chữ HOA và số (không dấu cách, khôn
 |---|---|---|---|---|
 | GET | `/assignments` | Danh sách phân công | ADMIN/TEACHER | 401, 429 |
 | GET | `/assignments/:id` | Chi tiết phân công | ADMIN/TEACHER | 400, 401, 404, 429 |
-| POST | `/assignments` | Phân công giảng viên cho lớp | ADMIN | 400, 401, 403, 404, 409 |
-| PUT | `/assignments/:id` | Đổi giảng viên, đặt lại `PENDING` | ADMIN | 400, 401, 403, 404, 409 |
-| PATCH | `/assignments/:id` | Đặt lại phân công bị từ chối về `PENDING` | ADMIN | 400, 401, 403, 404, 409 |
-| PATCH | `/assignments/:id/confirm` | Giảng viên xác nhận phân công của mình | TEACHER | 401, 403, 404, 409 |
-| PATCH | `/assignments/:id/reject` | Giảng viên từ chối phân công của mình | TEACHER | 401, 403, 404, 409 |
-| DELETE | `/assignments/:id` | Xóa phân công | ADMIN | 400, 401, 403, 404 |
+| POST | `/assignments` | Phân công giảng viên cho lớp | ADMIN | 400, 401, 403, 404, 409, 429 |
+| PUT | `/assignments/:id` | Đổi giảng viên, đặt lại `PENDING` | ADMIN | 400, 401, 403, 404, 409, 429 |
+| PATCH | `/assignments/:id` | Đặt lại phân công bị từ chối về `PENDING` | ADMIN | 400, 401, 403, 404, 409, 429 |
+| PATCH | `/assignments/:id/confirm` | Giảng viên xác nhận phân công của mình | TEACHER | 401, 403, 404, 409, 429 |
+| PATCH | `/assignments/:id/reject` | Giảng viên từ chối phân công của mình | TEACHER | 401, 403, 404, 409, 429 |
+| DELETE | `/assignments/:id` | Xóa phân công | ADMIN | 400, 401, 403, 404, 429 |
 
 Quy tắc phân công: mỗi lớp chỉ có một giảng viên; giảng viên không được trùng lịch; mỗi giảng viên có tối đa 3 phân công đang hoạt động (`PENDING` hoặc `CONFIRMED`). Phân công mới có `status = PENDING`; giảng viên có thể xác nhận hoặc từ chối phân công của mình.
 
@@ -229,7 +290,7 @@ Mã lỗi dùng trong dự án: 400 dữ liệu sai, 401 chưa xác thực, 403 
 npm test
 ```
 
-Các bài kiểm thử hiện có (Jest + Supertest) không cần kết nối CSDL thật và tự đặt `JWT_SECRET` riêng.
+Các bài kiểm thử Jest + Supertest thông thường dùng mock Prisma, không cần kết nối CSDL thật và tự đặt `JWT_SECRET` riêng. Riêng `tests/assignment.concurrency.test.js` mặc định bị bỏ qua; để chạy kiểm thử đồng thời với MySQL thật, dùng `RUN_MYSQL_CONCURRENCY=1` sau khi đã migrate và seed dữ liệu.
 
 ## Lỗi thường gặp
 
