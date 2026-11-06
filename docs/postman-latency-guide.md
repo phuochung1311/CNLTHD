@@ -27,6 +27,8 @@ http://localhost:3000/health
 4. Mở Collection **Teaching Assignment API - Latency Test**.
 5. Nếu server chạy cổng khác, sửa biến `baseUrl` trong Collection.
 
+Collection tự đăng nhập bằng các biến `loginEmail` và `loginPassword` khi `accessToken` chưa có hoặc đã hết hạn, sau đó gửi Bearer token cho `GET /api/v1/assignments`. Nếu dùng tài khoản khác, sửa hai biến này trong collection trước khi chạy.
+
 ## Các endpoint được đo
 
 | Request | Mục đích |
@@ -94,11 +96,11 @@ Chụp tối thiểu các ảnh sau:
 
 | Endpoint | Số mẫu | Thành công | Nhỏ nhất (ms) | Lớn nhất (ms) | Trung bình (ms) |
 |---|---:|---:|---:|---:|---:|
-| `/health` | 25 | 25 | Điền sau khi chạy | Điền sau khi chạy | Điền sau khi chạy |
-| `/api/v1/ping` | 25 | 25 | Điền sau khi chạy | Điền sau khi chạy | Điền sau khi chạy |
-| `/api/v1/courses` | 25 | 25 | Điền sau khi chạy | Điền sau khi chạy | Điền sau khi chạy |
-| `/api/v1/classes` | 25 | 25 | Điền sau khi chạy | Điền sau khi chạy | Điền sau khi chạy |
-| `/api/v1/assignments` | 25 | 25 | Điền sau khi chạy | Điền sau khi chạy | Điền sau khi chạy |
+| `/health` | 25 | 25 | 3 | 42 | 5.64 |
+| `/api/v1/ping` | 25 | 25 | 3 | 13 | 3.92 |
+| `/api/v1/courses` | 25 | 25 | 4 | 9 | 4.96 |
+| `/api/v1/classes` | 25 | 25 | 5 | 9 | 6.24 |
+| `/api/v1/assignments` | 25 | 25 | 5 | 10 | 6.28 |
 
 ## Lưu ý
 

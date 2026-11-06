@@ -6,7 +6,7 @@ jest.mock('../src/config/database', () => {
     users: { findUnique: jest.fn() },
     assignments: {
       findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(),
-      create: jest.fn(), delete: jest.fn(), count: jest.fn(),
+      create: jest.fn(), update: jest.fn(), updateMany: jest.fn(), delete: jest.fn(), count: jest.fn(),
     },
     $queryRaw: jest.fn(),
   };
@@ -34,6 +34,8 @@ beforeEach(() => {
   prisma.assignments.findFirst.mockResolvedValue(null);
   prisma.assignments.count.mockResolvedValue(0);
   prisma.assignments.create.mockResolvedValue(CREATED);
+  prisma.assignments.update.mockResolvedValue({ ...CREATED, status: 'CONFIRMED' });
+  prisma.assignments.updateMany.mockResolvedValue({ count: 1 });
 });
 
 describe('assignmentService.create', () => {
@@ -153,5 +155,137 @@ describe('assignmentService.getById', () => {
   test('404 khi không tìm thấy phân công', async () => {
     prisma.assignments.findUnique.mockResolvedValue(null);
     await expect(service.getById(123)).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe('assignmentService status workflow', () => {
+  test('teacher có thể xác nhận assignment của chính mình', async () => {
+    prisma.assignments.findUnique
+      .mockResolvedValueOnce({ ...CREATED, status: 'PENDING', teacherId: 2 })
+      .mockResolvedValueOnce({ ...CREATED, status: 'CONFIRMED', teacherId: 2 });
+
+    await expect(service.confirm(10, 2)).resolves.toMatchObject({ status: 'CONFIRMED' });
+    expect(prisma.assignments.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 10, teacherId: 2, status: 'PENDING' },
+        data: { status: 'CONFIRMED' },
+      }),
+    );
+  });
+
+  test('teacher không thể cập nhật assignment của người khác', async () => {
+    prisma.assignments.findUnique.mockResolvedValue({
+      ...CREATED,
+      status: 'PENDING',
+      teacherId: 3,
+    });
+
+    await expect(service.reject(10, 2)).rejects.toMatchObject({ statusCode: 403 });
+    expect(prisma.assignments.update).not.toHaveBeenCalled();
+  });
+
+  test('không thể từ chối assignment đã CONFIRMED', async () => {
+    prisma.assignments.findUnique.mockResolvedValue({
+      ...CREATED,
+      status: 'CONFIRMED',
+      teacherId: 2,
+    });
+
+    await expect(service.reject(10, 2)).rejects.toMatchObject({ statusCode: 409 });
+    expect(prisma.assignments.updateMany).not.toHaveBeenCalled();
+  });
+
+  test('cập nhật nguyên tử trạng thái và lấy lại assignment sau khi xác nhận', async () => {
+    prisma.assignments.findUnique
+      .mockResolvedValueOnce({ ...CREATED, status: 'PENDING', teacherId: 2 })
+      .mockResolvedValueOnce({ ...CREATED, status: 'CONFIRMED', teacherId: 2 });
+
+    await expect(service.confirm(10, 2)).resolves.toMatchObject({ status: 'CONFIRMED' });
+    expect(prisma.assignments.updateMany).toHaveBeenCalledWith({
+      where: { id: 10, teacherId: 2, status: 'PENDING' },
+      data: { status: 'CONFIRMED' },
+    });
+  });
+
+  test('409 khi trạng thái đã bị thay đổi trước cập nhật nguyên tử', async () => {
+    prisma.assignments.findUnique.mockResolvedValue({
+      ...CREATED,
+      status: 'PENDING',
+      teacherId: 2,
+    });
+    prisma.assignments.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.confirm(10, 2)).rejects.toMatchObject({ statusCode: 409 });
+  });
+});
+
+describe('assignmentService.updateTeacher', () => {
+  const rejectedAssignment = {
+    ...CREATED,
+    status: 'REJECTED',
+    teacherId: 2,
+    class: CLASS,
+  };
+
+  test('kiểm tra lại giới hạn khi giữ nguyên giảng viên của assignment REJECTED', async () => {
+    prisma.assignments.findUnique.mockResolvedValue(rejectedAssignment);
+    prisma.assignments.count.mockResolvedValue(3);
+
+    await expect(service.updateTeacher(10, 2)).rejects.toMatchObject({ statusCode: 409 });
+    expect(prisma.assignments.update).not.toHaveBeenCalled();
+  });
+
+  test('cập nhật assignment REJECTED khi giảng viên còn đủ chỗ', async () => {
+    prisma.assignments.findUnique.mockResolvedValue(rejectedAssignment);
+    prisma.assignments.update.mockResolvedValue({ ...rejectedAssignment, status: 'PENDING' });
+
+    await expect(service.updateTeacher(10, 2)).resolves.toMatchObject({ status: 'PENDING' });
+    expect(prisma.$queryRaw).toHaveBeenCalled();
+    expect(prisma.assignments.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { teacherId: 2, status: 'PENDING' },
+    }));
+  });
+});
+
+describe('assignmentService.resetToPending', () => {
+  const rejectedAssignment = {
+    ...CREATED,
+    status: 'REJECTED',
+    teacherId: 2,
+    class: CLASS,
+  };
+
+  test('đặt assignment REJECTED về PENDING', async () => {
+    prisma.assignments.findUnique.mockResolvedValue(rejectedAssignment);
+    prisma.assignments.update.mockResolvedValue({ ...rejectedAssignment, status: 'PENDING' });
+
+    await expect(service.resetToPending(10)).resolves.toMatchObject({ status: 'PENDING' });
+    expect(prisma.assignments.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { status: 'PENDING' },
+    }));
+  });
+
+  test('409 khi assignment không ở trạng thái REJECTED', async () => {
+    prisma.assignments.findUnique.mockResolvedValue({ ...rejectedAssignment, status: 'PENDING' });
+
+    await expect(service.resetToPending(10)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  test('409 khi giảng viên đã đủ 3 lớp đang hoạt động', async () => {
+    prisma.assignments.findUnique.mockResolvedValue(rejectedAssignment);
+    prisma.assignments.count.mockResolvedValue(3);
+
+    await expect(service.resetToPending(10)).rejects.toMatchObject({ statusCode: 409 });
+    expect(prisma.assignments.findFirst).not.toHaveBeenCalled();
+  });
+
+  test('409 khi giảng viên bị trùng lịch', async () => {
+    prisma.assignments.findUnique.mockResolvedValue(rejectedAssignment);
+    prisma.assignments.findFirst.mockResolvedValue({ class: { classCode: 'WEB101B' } });
+
+    await expect(service.resetToPending(10)).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining('WEB101B'),
+    });
   });
 });

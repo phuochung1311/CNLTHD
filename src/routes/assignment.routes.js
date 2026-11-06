@@ -10,6 +10,11 @@ router.get('/:id', verifyToken, validate(schema.idParam), ctrl.getById);
 
 // Thao tác ghi: chỉ ADMIN. Thứ tự bắt buộc: verifyToken -> checkRole -> validate -> controller
 router.post('/', verifyToken, checkRole('ADMIN'), validate(schema.createAssignment), ctrl.create);
+router.put('/:id', verifyToken, checkRole('ADMIN'), validate(schema.updateAssignment), ctrl.updateTeacher);
 router.delete('/:id', verifyToken, checkRole('ADMIN'), validate(schema.idParam), ctrl.remove);
+router.patch('/:id', verifyToken, checkRole('ADMIN'), validate(schema.idParam), ctrl.resetStatus);
+
+router.patch('/:id/confirm', verifyToken, checkRole('TEACHER'), validate(schema.idParam), ctrl.confirm);
+router.patch('/:id/reject', verifyToken, checkRole('TEACHER'), validate(schema.idParam), ctrl.reject);
 
 module.exports = router;
