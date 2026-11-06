@@ -1,4 +1,4 @@
-# API
+﻿# API
 
 Base URL: `/api/v1`
 
@@ -22,13 +22,12 @@ Ví dụ lỗi kiểm tra dữ liệu (HTTP 400):
   "message": "Dữ liệu đầu vào không hợp lệ",
   "errors": [
     {
-  }
-  ```
-      "field": "body.classId",
-      "message": "Invalid input: expected number, received string"
+      "field": "body.email",
+      "message": "Email không đúng định dạng"
     }
   ]
 }
+```
 
 ### Mã lỗi chung
 
@@ -36,7 +35,7 @@ Ví dụ lỗi kiểm tra dữ liệu (HTTP 400):
 |---|---|
 | 400 | `JSON không hợp lệ` — cú pháp JSON trong request body sai |
 | 404 | `Đường dẫn không tồn tại` — endpoint không được khai báo |
-| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
+| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ chung; riêng đăng nhập có thông báo khác ở mục Auth |
 | 500 | `Lỗi máy chủ nội bộ` — lỗi hệ thống không được trả chi tiết cho client |
 
 ### Mã định danh request (`X-Request-Id`)
@@ -49,19 +48,26 @@ Mọi response (kể cả lỗi 400, 401, 403, 404, 409, 500) đều có header 
 
 ### Xác thực (`Authorization`)
 
-Các endpoint của `assignments` yêu cầu header `Authorization: Bearer <accessToken>`. Lấy token từ `POST /auth/login`. Token có hiệu lực 1 giờ.
+Token lấy từ `POST /auth/login`, mặc định có hiệu lực 1 giờ và có thể cấu hình bằng `JWT_EXPIRES_IN`.
 
 | Endpoint | Yêu cầu |
 |---|---|
+| `POST /auth/login` | Không cần token |
+| `GET /courses`, `GET /courses/:id` | Không cần token |
+| `POST /courses`, `PATCH /courses/:id`, `DELETE /courses/:id` | Vai trò ADMIN |
 | `GET /assignments`, `GET /assignments/:id` | Đã đăng nhập (ADMIN hoặc TEACHER) |
-| `POST /assignments`, `DELETE /assignments/:id` | Vai trò ADMIN |
+| `POST /assignments`, `PUT /assignments/:id`, `PATCH /assignments/:id`, `DELETE /assignments/:id` | Vai trò ADMIN |
+| `PATCH /assignments/:id/confirm`, `PATCH /assignments/:id/reject` | Vai trò TEACHER |
 
-Client gửi JWT trong header `Authorization` với scheme `Bearer`. Thời hạn token mặc định là 1 giờ và có thể cấu hình bằng `JWT_EXPIRES_IN`.
+Client gửi JWT trong header `Authorization` với scheme `Bearer`.
 
 Lưu ý: người dùng TEACHER gọi `GET /assignments` nhận toàn bộ danh sách phân công, chưa lọc theo giảng viên đang đăng nhập.
+
 ### Giới hạn tốc độ
 
-Mọi endpoint dưới `/api/v1` bị giới hạn số request theo địa chỉ client: mặc định 100 request mỗi 15 phút (cấu hình bằng biến môi trường `RATE_LIMIT_MAX` và `RATE_LIMIT_WINDOW_MS`). Endpoint `/health` không bị giới hạn. Response của request vượt giới hạn có HTTP 429 và kèm các header thông báo giới hạn tốc độ.
+Mọi endpoint dưới `/api/v1` bị giới hạn số request theo địa chỉ client: mặc định 100 request mỗi 15 phút (cấu hình bằng biến môi trường `RATE_LIMIT_MAX` và `RATE_LIMIT_WINDOW_MS`). Endpoint `/health` không bị giới hạn. Response vượt giới hạn chung có HTTP 429, thông báo `Quá nhiều yêu cầu, vui lòng thử lại sau` và kèm các header thông báo giới hạn tốc độ.
+
+Riêng `POST /auth/login` có limiter theo địa chỉ client: mặc định 5 lần trong 15 phút, cấu hình bằng `LOGIN_RATE_LIMIT_MAX` và `LOGIN_RATE_LIMIT_WINDOW_MS`. Limiter bỏ qua request đăng nhập thành công (`skipSuccessfulRequests`), chỉ tính các request thất bại. Response 429 có thông báo `Quá nhiều lần đăng nhập thất bại, vui lòng thử lại sau 15 phút`. Cả hai response 429 do `express-rate-limit` trả trực tiếp, không đi qua error handler.
 
 Mã lỗi xác thực áp dụng cho các endpoint trên:
 
@@ -71,7 +77,7 @@ Mã lỗi xác thực áp dụng cho các endpoint trên:
 | 401 | `Token không hợp lệ` | Token sai hoặc bị sửa |
 | 401 | `Token hết hạn` | Token đã quá thời hạn |
 | 403 | `Không đủ quyền thực hiện thao tác này` | Đã đăng nhập nhưng vai trò không được phép (ví dụ TEACHER gọi `POST`) |
-| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` | Vượt giới hạn số request trong một khoảng thời gian |
+| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` | Vượt giới hạn tốc độ chung |
 
 Với các endpoint yêu cầu đăng nhập, xác thực và phân quyền được kiểm tra trước dữ liệu đầu vào: request không có token nhận 401, kể cả khi dữ liệu gửi lên sai. Riêng `POST /auth/login` không yêu cầu token và kiểm tra dữ liệu trước thông tin đăng nhập.
 
@@ -84,7 +90,6 @@ Mọi trường thời gian (`startTime`, `endTime`, `createdAt`, `updatedAt`) t
 ### `POST /auth/login`
 
 Đăng nhập bằng email và mật khẩu, nhận token truy cập (JWT).
-Thời hạn JWT mặc định là 1 giờ, có thể cấu hình bằng `JWT_EXPIRES_IN`.
 
 **Body (JSON):**
 
@@ -120,14 +125,15 @@ Thời hạn JWT mặc định là 1 giờ, có thể cấu hình bằng `JWT_EX
 }
 ```
 
-Token có hiệu lực 1 giờ. Gửi token ở các request sau trong header `Authorization: Bearer <accessToken>`.
+Gửi token ở các request sau trong header `Authorization: Bearer <chuỗi JWT>`.
 **Mã lỗi:**
 
 | HTTP | Thông báo |
 |---|---|
 | 400 | `Dữ liệu đầu vào không hợp lệ` — không gửi body (`field: body`), hoặc thiếu hay sai kiểu `email`, `password` (`field: body.email` hoặc `body.password`) |
 | 401 | `Email hoặc mật khẩu không đúng` — sai mật khẩu hoặc email không tồn tại (cùng một thông báo để không lộ email nào có trong hệ thống) |
-| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
+| 429 | `Quá nhiều lần đăng nhập thất bại, vui lòng thử lại sau 15 phút` — vượt giới hạn đăng nhập |
+| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ chung |
 
 ## Courses
 
@@ -240,8 +246,7 @@ Khi chưa có phân công nào, `data` là mảng rỗng `[]`.
 | 401 | `Thiếu token xác thực` |
 | 401 | `Token không hợp lệ` |
 | 401 | `Token hết hạn` |
-| 400 | `Dữ liệu đầu vào không hợp lệ` — không gửi body hoặc body sai dạng (`field: body`) |
-| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
+| 429 | Xem mục [Giới hạn tốc độ](#giới-hạn-tốc-độ) |
 
 ### `GET /assignments/:id`
 
@@ -303,11 +308,12 @@ Lấy thông tin chi tiết của một phân công theo ID.Yêu cầu đăng nh
 | 401 | `Token hết hạn` |
 | 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id`) — ID không phải số nguyên dương |
 | 404 | `Không tìm thấy phân công` |
-| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
+| 429 | Xem mục [Giới hạn tốc độ](#giới-hạn-tốc-độ) |
 
 ### `POST /assignments`
 
 Phân công một giảng viên phụ trách một lớp.
+Yêu cầu vai trò ADMIN.
 
 **Body (JSON):**
 
@@ -367,15 +373,15 @@ Hai trường phải là số, không phải chuỗi: gửi `"classId": "1"` s�
 }
 ```
 
-**Thứ tự kiểm tra:** hệ thống kiểm tra lần lượt các điều kiện dưới đây và dừng ở điều kiện đầu tiên không thỏa. Vì vậy cùng một request có thể nhận thông báo lỗi khác nhau tùy dữ liệu hiện có. Yêu cầu vai trò ADMIN.
+**Thứ tự kiểm tra:** hệ thống kiểm tra lần lượt các điều kiện dưới đây và dừng ở điều kiện đầu tiên không thỏa. Vì vậy cùng một request có thể nhận thông báo lỗi khác nhau tùy dữ liệu hiện có.
 
 1. Xác thực token (401) và vai trò ADMIN (403).
 2. Dữ liệu đầu vào hợp lệ (400).
 3. Lớp học tồn tại (404).
 4. Giảng viên tồn tại (404) và có vai trò giảng viên (400).
 5. Lớp chưa có giảng viên phụ trách (409).
-6. Giảng viên không trùng lịch với lớp đã nhận (409).
-7. Giảng viên chưa được phân công đủ 3 lớp đang hoạt động (409). Chỉ các phân công `PENDING` và `CONFIRMED` được tính; `REJECTED` không được tính.
+6. Giảng viên chưa được phân công đủ 3 lớp đang hoạt động (409). Chỉ các phân công `PENDING` và `CONFIRMED` được tính; `REJECTED` không được tính.
+7. Giảng viên không trùng lịch với lớp đã nhận (409).
 
 **Mã lỗi:**
 
@@ -390,16 +396,26 @@ Hai trường phải là số, không phải chuỗi: gửi `"classId": "1"` s�
 | 404 | `Lớp học không tồn tại` |
 | 404 | `Giảng viên không tồn tại` |
 | 409 | `Lớp này đã có giảng viên phụ trách` |
-| 409 | `Giảng viên trùng lịch với lớp {classCode}` — hai lớp có khoảng thời gian giao nhau |
 | 409 | `Giảng viên đã được phân công tối đa 3 lớp` |
+| 409 | `Giảng viên trùng lịch với lớp {classCode}` — hai lớp có khoảng thời gian giao nhau |
 | 409 | `Dữ liệu bị trùng (vi phạm unique)` — hai request cùng phân công một lớp tại cùng thời điểm |
-| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
 
-**Xử lý đồng thời:** việc tạo phân công chạy trong một transaction và khóa dòng giảng viên (`SELECT ... FOR UPDATE`), nên các request phân công cho cùng một giảng viên được xử lý lần lượt; kiểm tra trùng lịch và giới hạn 3 lớp luôn đọc dữ liệu mới nhất. Hai request cùng gán một lớp cho hai giảng viên khác nhau không bị khóa chung; khi đó ràng buộc duy nhất của `classId` chặn request đến sau và trả 409 `Dữ liệu bị trùng (vi phạm unique)`.
 
 ### `PUT /assignments/:id`
 
-Admin đổi giảng viên phụ trách. Body bắt buộc:
+Đổi giảng viên phụ trách. Yêu cầu vai trò ADMIN.
+
+**Tham số đường dẫn:**
+
+| Tên | Kiểu dữ liệu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | Số nguyên dương | Có | ID phân công |
+
+**Body (JSON):**
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `teacherId` | Số nguyên dương | Có | ID người dùng có vai trò giảng viên |
 
 ```json
 {
@@ -407,21 +423,84 @@ Admin đổi giảng viên phụ trách. Body bắt buộc:
 }
 ```
 
-Thao tác đặt trạng thái phân công về `PENDING` và kiểm tra giảng viên mới có tồn tại, đúng vai trò, không vượt quá 3 phân công đang hoạt động và không trùng lịch.
+**Response thành công (HTTP 200):** thông báo `Cập nhật giảng viên thành công`; dữ liệu phân công trả về luôn có `status = PENDING`.
+
+**Thứ tự kiểm tra:** token và vai trò ADMIN; dữ liệu đầu vào hợp lệ; phân công tồn tại; giảng viên tồn tại và có vai trò giảng viên; sau đó kiểm tra quota tối đa 3 lớp và trùng lịch khi điều kiện kiểm tra được kích hoạt.
+
+Quota và lịch chỉ được kiểm tra lại khi đổi sang giảng viên khác hoặc phân công hiện tại ở trạng thái `REJECTED`. Nếu gửi lại đúng giảng viên cũ trên phân công không ở `REJECTED`, hai kiểm tra này được bỏ qua nhưng trạng thái vẫn được đặt về `PENDING`.
+
+**Mã lỗi:**
+
+| HTTP | Thông báo |
+|---|---|
+| 401 | `Thiếu token xác thực` |
+| 401 | `Token không hợp lệ` |
+| 401 | `Token hết hạn` |
+| 403 | `Không đủ quyền thực hiện thao tác này` |
+| 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id` hoặc `body.teacherId`) — ID không hợp lệ hoặc `teacherId` thiếu/không phải số nguyên dương |
+| 404 | `Không tìm thấy phân công` |
+| 404 | `Giảng viên không tồn tại` |
+| 400 | `Người dùng này không phải giảng viên` |
+| 409 | `Giảng viên đã được phân công tối đa 3 lớp` |
+| 409 | `Giảng viên trùng lịch với lớp {classCode}` |
 
 ### `PATCH /assignments/:id`
 
-Admin đặt lại một phân công `REJECTED` về `PENDING`. Chỉ phân công đang ở trạng thái `REJECTED` mới được đặt lại.
+Đặt lại một phân công `REJECTED` về `PENDING`. Yêu cầu vai trò ADMIN; chỉ phân công đang ở trạng thái `REJECTED` mới được đặt lại.
+
+**Response thành công (HTTP 200):** thông báo `Đã đặt lại phân công về trạng thái chờ`; trạng thái là `PENDING`.
+
+**Mã lỗi:**
+
+| HTTP | Thông báo |
+|---|---|
+| 401 | `Thiếu token xác thực` |
+| 401 | `Token không hợp lệ` |
+| 401 | `Token hết hạn` |
+| 403 | `Không đủ quyền thực hiện thao tác này` |
+| 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id`) — ID không phải số nguyên dương |
+| 404 | `Không tìm thấy phân công` |
+| 409 | `Chỉ phân công đã bị từ chối mới được đặt lại về chờ` |
+| 409 | `Giảng viên đã được phân công tối đa 3 lớp` |
+| 409 | `Giảng viên trùng lịch với lớp {classCode}` |
 
 ### `PATCH /assignments/:id/confirm`
 
 Giảng viên được phân công xác nhận phân công của chính mình. Chỉ phân công `PENDING` mới được xác nhận; request yêu cầu token TEACHER đúng với `teacherId` của phân công.
 
+**Response thành công (HTTP 200):** thông báo `Đã chấp nhận phân công`.
+
+**Mã lỗi:**
+
+| HTTP | Thông báo |
+|---|---|
+| 401 | `Thiếu token xác thực` |
+| 401 | `Token không hợp lệ` |
+| 401 | `Token hết hạn` |
+| 403 | `Không đủ quyền thực hiện thao tác này` — token không có vai trò TEACHER |
+| 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id`) — ID không phải số nguyên dương |
+| 404 | `Không tìm thấy phân công` |
+| 403 | `Bạn không có quyền cập nhật phân công này` — phân công thuộc giảng viên khác |
+| 409 | `Chỉ phân công đang chờ mới có thể cập nhật` |
+
 ### `PATCH /assignments/:id/reject`
 
 Giảng viên được phân công từ chối phân công của chính mình. Chỉ phân công `PENDING` mới được từ chối; request yêu cầu token TEACHER đúng với `teacherId` của phân công.
 
-Các endpoint trên trả `401` khi thiếu hoặc sai token, `403` khi không đúng vai trò hoặc không phải giảng viên được phân công, `404` khi không tìm thấy phân công và `409` khi trạng thái hiện tại không cho phép thao tác.
+**Response thành công (HTTP 200):** thông báo `Đã từ chối phân công`.
+
+**Mã lỗi:**
+
+| HTTP | Thông báo |
+|---|---|
+| 401 | `Thiếu token xác thực` |
+| 401 | `Token không hợp lệ` |
+| 401 | `Token hết hạn` |
+| 403 | `Không đủ quyền thực hiện thao tác này` — token không có vai trò TEACHER |
+| 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id`) — ID không phải số nguyên dương |
+| 404 | `Không tìm thấy phân công` |
+| 403 | `Bạn không có quyền cập nhật phân công này` — phân công thuộc giảng viên khác |
+| 409 | `Chỉ phân công đang chờ mới có thể cập nhật` |
 
 ### `DELETE /assignments/:id`
 
@@ -453,4 +532,7 @@ Xóa một phân công theo ID.
 | 403 | `Không đủ quyền thực hiện thao tác này` |
 | 400 | `Dữ liệu đầu vào không hợp lệ` (`field: params.id`) — ID không phải số nguyên dương |
 | 404 | `Không tìm thấy phân công` |
-| 429 | `Quá nhiều yêu cầu, vui lòng thử lại sau` — vượt giới hạn tốc độ |
+
+### Xử lý đồng thời
+
+POST, PUT và `PATCH /assignments/:id` (đặt lại phân công) chạy trong transaction và khóa giảng viên trên bảng `Users` bằng `SELECT ... FOR UPDATE` khi kiểm tra quota/lịch. Với PUT, khóa và kiểm tra quota/lịch chỉ diễn ra khi đổi giảng viên hoặc phân công đang `REJECTED`. POST có unique constraint trên `classId`; nếu hai request đồng thời tạo phân công cho cùng lớp, request bị chặn nhận 409 `Dữ liệu bị trùng (vi phạm unique)`. Confirm/reject dùng cập nhật có điều kiện `status = PENDING`; nếu request trước đã đổi trạng thái thì request đến sau nhận 409 `Chỉ phân công đang chờ mới có thể cập nhật`.
